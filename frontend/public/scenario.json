@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "scenario_id": "FM-001",
+  "synthetic": true,
+  "banks": [
+    { "id": "A", "name": "Bank A", "entity_count": 2, "local_alerts": 1, "local_ring_count": 0, "local_findings": [{"title":"New beneficiary", "detail":"A local rule flags an unfamiliar relationship. The bank cannot reconstruct the full cycle."}] },
+    { "id": "B", "name": "Bank B", "entity_count": 2, "local_alerts": 1, "local_ring_count": 0, "local_findings": [{"title":"Velocity change", "detail":"A local rule flags rapid onward movement. The available local fragment is a single link."}] },
+    { "id": "C", "name": "Bank C", "entity_count": 2, "local_alerts": 1, "local_ring_count": 0, "local_findings": [{"title":"Unusual relationship", "detail":"A local rule flags a relationship for review. The return path is only visible collaboratively."}] }
+  ],
+  "graph": {
+    "nodes": [
+      { "id": "psn_A01", "bank_id": "A", "label": "psn_A01", "local_risk": 0.31 },
+      { "id": "psn_A02", "bank_id": "A", "label": "psn_A02", "local_risk": 0.44 },
+      { "id": "psn_B01", "bank_id": "B", "label": "psn_B01", "local_risk": 0.38 },
+      { "id": "psn_B02", "bank_id": "B", "label": "psn_B02", "local_risk": 0.49 },
+      { "id": "psn_C01", "bank_id": "C", "label": "psn_C01", "local_risk": 0.35 },
+      { "id": "psn_C02", "bank_id": "C", "label": "psn_C02", "local_risk": 0.47 }
+    ],
+    "edges": [
+      { "id": "rel_01", "source": "psn_A01", "target": "psn_A02", "kind": "transfer_link", "step": 1, "time_bucket": "T+00m", "risk_band": "medium" },
+      { "id": "rel_02", "source": "psn_A02", "target": "psn_B01", "kind": "transfer_link", "step": 2, "time_bucket": "T+01m", "risk_band": "medium" },
+      { "id": "rel_03", "source": "psn_B01", "target": "psn_B02", "kind": "transfer_link", "step": 3, "time_bucket": "T+02m", "risk_band": "medium" },
+      { "id": "rel_04", "source": "psn_B02", "target": "psn_C01", "kind": "transfer_link", "step": 4, "time_bucket": "T+03m", "risk_band": "medium" },
+      { "id": "rel_05", "source": "psn_C01", "target": "psn_C02", "kind": "transfer_link", "step": 5, "time_bucket": "T+04m", "risk_band": "medium" },
+      { "id": "rel_06", "source": "psn_C02", "target": "psn_A01", "kind": "transfer_link", "step": 6, "time_bucket": "T+05m", "risk_band": "high" }
+    ]
+  },
+  "collaborative_alerts": [
+    {
+      "id": "FM-001", "title": "Cross-bank cycle", "severity": "high", "detected_at_step": 6,
+      "node_ids": ["psn_A01", "psn_A02", "psn_B01", "psn_B02", "psn_C01", "psn_C02"],
+      "edge_ids": ["rel_01", "rel_02", "rel_03", "rel_04", "rel_05", "rel_06"],
+      "reasons": [
+        { "code": "CROSS_INSTITUTION_PATH", "title": "Three-bank path", "detail": "Six pseudonymous entities form a path spanning Bank A, Bank B and Bank C." },
+        { "code": "SHORT_CYCLE", "title": "Closed transfer cycle", "detail": "The final relationship returns to the starting entity. Each bank sees only its own fragment." },
+        { "code": "RAPID_PROPAGATION", "title": "Rapid propagation", "detail": "All six fixture relationships occur within six one-minute time buckets." }
+      ]
+    }
+  ],
+  "sharing_summary": {
+    "raw_rows_shared": 0,
+    "shared_fields": ["id", "source", "target", "kind", "step", "time_bucket", "risk_band"],
+    "retained_local": ["Customer names and contact details", "Raw account and transaction identifiers", "Exact amounts and timestamps"],
+    "execution_verified": false
+  }
+}

@@ -43,6 +43,7 @@ def build_analysis_response(shared_signals: list[dict[str, Any]]) -> dict[str, A
             "shared_fields": detection["summary"]["shared_fields"],
             "raw_fields_transmitted": [],
             "pseudonymization": "HMAC tokens are pseudonymous, not a formal privacy guarantee",
+            "validation_scope": "Schema and value validation of accepted signals; not a network audit or proof of sender behaviour",
         },
         "summary": detection["summary"],
     }

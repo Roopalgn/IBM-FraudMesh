@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 from collections import defaultdict
+from datetime import datetime, timedelta
 from typing import Any, Iterable, Mapping
 
 import networkx as nx
@@ -15,6 +16,7 @@ def build_collaboration_graph(shared_signals: Iterable[Mapping[str, Any]]) -> nx
     """Build a directed graph using only already-validated shared fields."""
     signals = list(shared_signals)
     validate_shared_signals(signals)
+    signals.sort(key=lambda signal: signal["signal_id"])
     graph = nx.MultiDiGraph()
     for signal in signals:
         source = signal["source_entity_token"]
@@ -41,14 +43,22 @@ def _component_evidence(graph: nx.MultiDiGraph, nodes: set[str]) -> tuple[list[s
     buckets = sorted({data["timestamp_bucket"] for _, _, data in subgraph.edges(data=True)})
     reasons: list[str] = []
     simple = nx.DiGraph(subgraph)
-    cycles = list(nx.simple_cycles(simple, length_bound=6))
-    if cycles:
-        reasons.append("cross_institution_cycle")
-    if any(subgraph.out_degree(node) >= 2 for node in subgraph.nodes):
+    try:
+        cycle = nx.find_cycle(simple)
+    except nx.NetworkXNoCycle:
+        cycle = []
+    if cycle:
+        reasons.append("directed_cycle")
+        cycle_banks = {data["institution_id"] for source, target in cycle
+                       for data in subgraph[source][target].values()}
+        if len(cycle_banks) >= 2:
+            reasons.append("cross_institution_cycle")
+    if any(len(set(subgraph.successors(node))) >= 2 for node in subgraph.nodes):
         reasons.append("fan_out")
-    if any(subgraph.in_degree(node) >= 2 for node in subgraph.nodes):
+    if any(len(set(subgraph.predecessors(node))) >= 2 for node in subgraph.nodes):
         reasons.append("fan_in")
-    if len(buckets) <= 2 and subgraph.number_of_edges() >= 3:
+    times = [datetime.strptime(bucket, "%Y-%m-%dT%H:00Z") for bucket in buckets]
+    if max(times) - min(times) <= timedelta(hours=1) and subgraph.number_of_edges() >= 3:
         reasons.append("rapid_propagation")
     if len(institutions) >= 2:
         reasons.append("cross_institution_relationships")
@@ -59,18 +69,18 @@ def _component_evidence(graph: nx.MultiDiGraph, nodes: set[str]) -> tuple[list[s
 
 
 def _is_alert_worthy(
-    graph: nx.MultiDiGraph, institutions: list[str], reasons: list[str]
+    graph: nx.MultiDiGraph, institutions: list[str], reasons: list[str], min_institutions: int
 ) -> bool:
     """Use transparent evidence thresholds, not scenario-specific IDs."""
-    structural = {"cross_institution_cycle", "fan_in", "fan_out"}
+    structural = {"directed_cycle", "fan_in", "fan_out"}
     return (
-        len(institutions) >= 2
+        len(institutions) >= min_institutions
         and graph.number_of_edges() >= 3
         and bool(structural.intersection(reasons))
     )
 
 
-def detect_fraud_rings(shared_signals: list[dict[str, Any]]) -> dict[str, Any]:
+def detect_fraud_rings(shared_signals: list[dict[str, Any]], *, min_institutions: int = 2) -> dict[str, Any]:
     """Detect suspicious multi-bank components and return traceable evidence.
 
     Alerts are produced only when the allowlisted graph contains a multi-bank
@@ -84,7 +94,7 @@ def detect_fraud_rings(shared_signals: list[dict[str, Any]]) -> dict[str, Any]:
     for component in nx.weakly_connected_components(graph):
         subgraph = graph.subgraph(component).copy()
         institutions, buckets, reasons, max_risk = _component_evidence(subgraph, set(component))
-        if not _is_alert_worthy(subgraph, institutions, reasons):
+        if not _is_alert_worthy(subgraph, institutions, reasons, min_institutions):
             continue
         signal_ids = sorted(data["signal_id"] for _, _, data in subgraph.edges(data=True))
         fingerprint = sha256("|".join(signal_ids).encode("utf-8")).hexdigest()[:12]
@@ -148,7 +158,7 @@ def compare_local_and_collaborative(
         by_institution[signal["institution_id"]].append(signal)
 
     local_results = {
-        institution_id: detect_fraud_rings(signals)
+        institution_id: detect_fraud_rings(signals, min_institutions=1)
         for institution_id, signals in sorted(by_institution.items())
     }
     collaborative_result = detect_fraud_rings(shared_signals)
@@ -166,7 +176,7 @@ def compare_local_and_collaborative(
             },
         },
         "collaborative": {
-            "institutions": list(by_institution),
+            "institutions": sorted(by_institution),
             "signals_processed": len(shared_signals),
             "alerts_generated": len(collaborative_result["alerts"]),
             "alerts": collaborative_result["alerts"],
