@@ -1,0 +1,100 @@
+{
+  "alerts": [
+    {
+      "alert_id": "FM-RING-b5282de990a6",
+      "cross_institution": true,
+      "edge_count": 3,
+      "evidence": [
+        {
+          "code": "cycle",
+          "linked_entities": [
+            "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+            "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+            "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781"
+          ],
+          "supporting_signal_ids": ["demo-a-001", "demo-b-001", "demo-c-001"]
+        },
+        {
+          "code": "cross_institution_cycle",
+          "institutions": ["bank_a", "bank_b", "bank_c"],
+          "supporting_signal_ids": ["demo-a-001", "demo-b-001", "demo-c-001"]
+        },
+        {
+          "code": "rapid_propagation",
+          "elapsed_minutes": 0,
+          "resolution": "UTC hour buckets"
+        }
+      ],
+      "institutions_involved": ["bank_a", "bank_b", "bank_c"],
+      "linked_entities": [
+        "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+        "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+        "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781"
+      ],
+      "max_local_risk_score": 0.48,
+      "risk_level": "high",
+      "structural_pattern": "cycle",
+      "supporting_signal_ids": ["demo-a-001", "demo-b-001", "demo-c-001"],
+      "time_window_minutes": 0,
+      "timestamp_buckets": ["2026-10-17T10:00Z"]
+    }
+  ],
+  "graph": {
+    "edges": [
+      {
+        "amount_bucket": "10k_50k",
+        "channel": "transfer",
+        "id": "demo-a-001",
+        "institution_id": "bank_a",
+        "local_risk_score": 0.42,
+        "signal_id": "demo-a-001",
+        "source": "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781",
+        "target": "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+        "timestamp_bucket": "2026-10-17T10:00Z"
+      },
+      {
+        "amount_bucket": "10k_50k",
+        "channel": "transfer",
+        "id": "demo-b-001",
+        "institution_id": "bank_b",
+        "local_risk_score": 0.48,
+        "signal_id": "demo-b-001",
+        "source": "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+        "target": "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+        "timestamp_bucket": "2026-10-17T10:00Z"
+      },
+      {
+        "amount_bucket": "10k_50k",
+        "channel": "transfer",
+        "id": "demo-c-001",
+        "institution_id": "bank_c",
+        "local_risk_score": 0.45,
+        "signal_id": "demo-c-001",
+        "source": "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+        "target": "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781",
+        "timestamp_bucket": "2026-10-17T10:00Z"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+        "institution_ids": ["bank_a", "bank_b"]
+      },
+      {
+        "id": "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781",
+        "institution_ids": ["bank_a", "bank_c"]
+      },
+      {
+        "id": "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+        "institution_ids": ["bank_b", "bank_c"]
+      }
+    ]
+  },
+  "summary": {
+    "local_risk_score_usage": "displayed as evidence only; not fused into detection or severity",
+    "pseudonymous_entities": 3,
+    "schema_validation": "restricted shared-signal schema accepted",
+    "signals_processed": 3,
+    "structural_findings": 1
+  }
+}
