@@ -3,6 +3,7 @@
 import unittest
 
 from fraudmesh.graph_engine import compare_local_and_collaborative, detect_fraud_rings
+from fraudmesh.integration import build_analysis_response
 from fraudmesh.privacy import PrivacyContractError, create_shared_signal, pseudonymize_identifier
 from fraudmesh.scenarios import DEMO_SECRET, three_bank_fraud_ring
 
@@ -57,6 +58,17 @@ class GraphEngineTests(unittest.TestCase):
         self.assertEqual(result["local_only"]["alerts_generated"], 0)
         self.assertEqual(result["collaborative"]["alerts_generated"], 1)
         self.assertEqual(result["collaborative"]["alerts"][0]["risk_level"], "high")
+
+    def test_api_response_has_stable_integration_sections(self):
+        response = build_analysis_response(three_bank_fraud_ring())
+        self.assertEqual(
+            [item["institution_id"] for item in response["bank_results"]],
+            ["bank_a", "bank_b", "bank_c"],
+        )
+        self.assertEqual(len(response["collaborative_alerts"]), 1)
+        self.assertEqual(len(response["graph"]["nodes"]), 3)
+        self.assertEqual(len(response["graph"]["edges"]), 3)
+        self.assertEqual(response["privacy"]["raw_fields_transmitted"], [])
 
 
 if __name__ == "__main__":

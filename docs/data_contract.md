@@ -33,3 +33,5 @@ Banks call `pseudonymize_identifier(identifier, secret)` before signal creation.
 
 `compare_local_and_collaborative(shared_signals: list[dict]) -> dict` runs the same detector once per bank and once over the combined allowlisted signals. Its output is a controlled synthetic comparison for the dashboard and demo; it must not be presented as a generalization or production performance benchmark.
 
+`build_analysis_response(shared_signals: list[dict]) -> dict` packages the detector output for the team lead's `/analyze` endpoint. The response contains `bank_results`, `collaborative_alerts`, `graph`, `comparison`, `privacy`, and `summary`. The API adapter does not accept raw transaction rows and reports an empty `raw_fields_transmitted` list as an auditable privacy check.
+
