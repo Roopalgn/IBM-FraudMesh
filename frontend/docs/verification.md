@@ -1,6 +1,8 @@
-# Verification record
+# Integration verification
 
-Historical record for the original authored-only dashboard. For the current corrected-response work, see `verification-current.md`.
+The integration adds three cross-language tests against actual computed Python outputs, for 14 Node tests total. The API/ML/graph suite contains 63 passing Python tests. Browser verification exercised automatic same-origin loading, computed ring, normal negative control, and local positive control. Final integration checks and remaining LinuxONE work are documented in the root README and docs/linuxone.md. Earlier component-only verification notes follow.
+
+# Verification record
 
 Verified on October 17, 2026 in the local Codex workspace.
 

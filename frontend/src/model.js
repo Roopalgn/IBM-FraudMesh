@@ -34,14 +34,19 @@ export function validateAnalysis(input) {
   const bankIds = new Set(banks.map(b => b.id));
   const nodes = array(input.graph?.nodes, 'graph.nodes', 60).map(n => {
     if (!bankIds.has(n.bank_id)) throw new Error('Node references an unknown bank.');
-    return { id: string(n.id, 'node.id'), bank_id: n.bank_id, label: string(n.label, 'node.label'), local_risk: number(n.local_risk, 'local_risk', 0, 1) };
+    const memberships = n.bank_ids === undefined ? [n.bank_id] : strings(n.bank_ids, 'bank_ids');
+    if (!memberships.length || memberships.some(id => !bankIds.has(id)) || !memberships.includes(n.bank_id)) throw new Error('Invalid entity bank memberships.');
+    return { id: string(n.id, 'node.id'), bank_id: n.bank_id, bank_ids: [...new Set(memberships)], label: string(n.label, 'node.label'), local_risk: number(n.local_risk, 'local_risk', 0, 1) };
   });
   unique(nodes, 'nodes');
   const nodeIds = new Set(nodes.map(n => n.id));
   const edges = array(input.graph?.edges, 'graph.edges', 200).map(e => {
     if (!nodeIds.has(e.source) || !nodeIds.has(e.target)) throw new Error('Edge references an unknown entity.');
+    if (e.institution_id !== undefined && !bankIds.has(e.institution_id)) throw new Error('Edge references an unknown bank.');
+    if (e.institution_id !== undefined && [e.source,e.target].some(id => !nodes.find(n=>n.id===id).bank_ids.includes(e.institution_id))) throw new Error('Edge bank is absent from entity memberships.');
     return { id: string(e.id, 'edge.id'), source: e.source, target: e.target, kind: string(e.kind, 'kind'),
-      step: integer(e.step, 'step', 1, 200), time_bucket: string(e.time_bucket, 'time_bucket'), risk_band: string(e.risk_band, 'risk_band') };
+      step: integer(e.step, 'step', 1, 200), time_bucket: string(e.time_bucket, 'time_bucket'), risk_band: string(e.risk_band, 'risk_band'),
+      ...(e.institution_id === undefined ? {} : {institution_id:e.institution_id, local_risk_score:number(e.local_risk_score,'edge.local_risk_score',0,1)}) };
   });
   unique(edges, 'edges');
   const edgeIds = new Set(edges.map(e => e.id));
@@ -58,36 +63,44 @@ export function validateAnalysis(input) {
   unique(alerts, 'alerts');
   const summary = input.sharing_summary;
   if (!summary || typeof summary.execution_verified !== 'boolean') throw new Error('sharing_summary.execution_verified must be explicit.');
-  const normalizedNodes = nodes.map(n=>({...n,bank_ids:[n.bank_id]}));
-  const normalizedEdges = edges.map(e=>({...e,contributing_bank_id:nodes.find(n=>n.id===e.source).bank_id===nodes.find(n=>n.id===e.target).bank_id ? nodes.find(n=>n.id===e.source).bank_id : null}));
   return { schema_version: '1.0', scenario_id: string(input.scenario_id, 'scenario_id'), synthetic: input.synthetic,
-    replay_supported:true,comparison:{local_valid:true,note:'Authored demonstration counts, not a computed accuracy comparison.'},
-    banks, graph: { nodes:normalizedNodes, edges:normalizedEdges }, collaborative_alerts: alerts,
-    sharing_summary: { raw_rows_shared: integer(summary.raw_rows_shared, 'raw_rows_shared'),
+    banks, graph: { nodes, edges }, collaborative_alerts: alerts,
+    sharing_summary: { raw_rows_shared: summary.raw_rows_shared === null ? null : integer(summary.raw_rows_shared, 'raw_rows_shared'),
       shared_fields: strings(summary.shared_fields, 'shared_fields'), retained_local: strings(summary.retained_local, 'retained_local'),
       execution_verified: summary.execution_verified } };
 }
 export function maxStep(data) {
   return Math.max(0, ...data.graph.edges.map(e => e.step), ...data.collaborative_alerts.map(a => a.detected_at_step));
 }
-export function deriveView(data, step, collaborative, bankId = null) {
-  const nodeMap = new Map(data.graph.nodes.map(n => [n.id, n]));
-  const edges = data.graph.edges.filter(e => e.step <= step && (collaborative || (e.contributing_bank_id !== null && (!bankId || e.contributing_bank_id===bankId))));
-  const visibleIds=new Set(edges.flatMap(e=>[e.source,e.target]));
-  const nodes=collaborative ? data.graph.nodes : data.graph.nodes.filter(n=>visibleIds.has(n.id));
-  const visibleEdgeIds=new Set(edges.map(e=>e.id));
-  const candidates=collaborative?data.collaborative_alerts:data.banks.filter(b=>!bankId||b.id===bankId).flatMap(b=>b.local_structural_findings||[]);
-  const alerts = candidates.filter(a => a.detected_at_step <= step && a.edge_ids.every(id=>visibleEdgeIds.has(id)));
-  return { edges, nodes, alerts, nodeMap, crossBankEdges: edges.filter(e => e.contributing_bank_id===null),
-    participatingBanks: new Set(edges.map(e=>e.contributing_bank_id).filter(Boolean)).size };
+export function deriveView(data, step, collaborative) {
+  let nodes = data.graph.nodes;
+  let nodeMap = new Map(nodes.map(n => [n.id, n]));
+  let edges = data.graph.edges.filter(e => e.step <= step);
+  const attributed = edges.every(e => e.institution_id !== undefined);
+  if (!collaborative && attributed) {
+    // Separate bank-visible copies avoid reconstructing cross-bank paths locally.
+    const localNodes = new Map();
+    edges = edges.map(e => {
+      for (const id of [e.source,e.target]) {
+        const key = `${id}@${e.institution_id}`;
+        const existing = localNodes.get(key);
+        localNodes.set(key,{...nodeMap.get(id),id:key,bank_id:e.institution_id,bank_ids:[e.institution_id],local_risk:Math.max(existing?.local_risk ?? 0,e.local_risk_score)});
+      }
+      return {...e,source:`${e.source}@${e.institution_id}`,target:`${e.target}@${e.institution_id}`};
+    });
+    nodes = [...localNodes.values()];
+    nodeMap = new Map(nodes.map(n=>[n.id,n]));
+  } else if (!collaborative) edges = edges.filter(e=>nodeMap.get(e.source).bank_id === nodeMap.get(e.target).bank_id);
+  const alerts = collaborative ? data.collaborative_alerts.filter(a => a.detected_at_step <= step) : [];
+  return { nodes, edges, alerts, nodeMap, crossBankEdges: collaborative ? edges.filter(e => attributed ? [e.source,e.target].some(id=>nodeMap.get(id).bank_ids.length>1) : nodeMap.get(e.source).bank_id !== nodeMap.get(e.target).bank_id) : [],
+    participatingBanks: new Set(edges.flatMap(e => e.institution_id ? [e.institution_id] : [nodeMap.get(e.source).bank_id,nodeMap.get(e.target).bank_id])).size };
 }
-export function caseExport(data, step, collaborative, source, bankId=null) {
-  const view = deriveView(data, step, collaborative, bankId);
+export function caseExport(data, step, collaborative, source) {
+  const view = deriveView(data, step, collaborative);
   const ids = new Set(view.edges.flatMap(e => [e.source, e.target]));
   return { exported_at: new Date().toISOString(), source, synthetic: data.synthetic, scenario_id: data.scenario_id,
-    mode: collaborative ? 'collaborative' : 'local-only', selected_bank: bankId, replay_step: data.replay_supported ? step : null,
-    graph: { nodes: data.graph.nodes.filter(n => ids.has(n.id)), edges: view.edges },
-    collaborative_alerts: collaborative ? view.alerts : [], local_structural_findings: collaborative ? [] : view.alerts, sharing_summary: collaborative ? data.sharing_summary : null,
-    provenance:data.provenance||null,
-    limitations: 'Display export only. No inference, privacy, deployment, or security verification is performed by this frontend. Local-only mode is a visualization of the backend or fixture output, not bank-level access control. Membership describes incidence in bank-contributed signals, not account ownership.' };
+    mode: collaborative ? 'collaborative' : 'local-only', replay_step: step,
+    graph: { nodes: view.nodes.filter(n => ids.has(n.id)), edges: view.edges },
+    collaborative_alerts: view.alerts, sharing_summary: collaborative ? data.sharing_summary : null,
+    limitations: 'Display export only. No inference, privacy, deployment, or security verification is performed by this frontend. Local-only mode is a visualization of the backend or fixture output, not bank-level access control.' };
 }

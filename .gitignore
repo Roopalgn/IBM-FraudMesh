@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+.env
+*.pem
+*.ppk
+*.key
+output/
+tmp/
+*.log
