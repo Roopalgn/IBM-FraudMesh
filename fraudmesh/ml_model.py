@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from numbers import Real
 
 FEATURE_NAMES = ("amount", "velocity_1h", "fan_out_1h")
+INPUT_FIELDS = ("transaction_id", "institution_id", "timestamp", "source_entity_token",
+                "destination_entity_token", "amount", "transaction_type", "channel")
 MODEL_VERSION = "synthetic-local-logistic-v2"
 
 # BEGIN TRAINED MODEL
