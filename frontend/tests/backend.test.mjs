@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const venvPython = fileURLToPath(new URL(process.platform==='win32'?'../../.venv/Scripts/python.exe':'../../.venv/bin/python',import.meta.url));
 const python = process.env.FRAUDMESH_TEST_PYTHON || (existsSync(venvPython)?venvPython:'python');
 const generated = spawnSync(python,['-B','-c',
-  'import json; from fraudmesh.demo import demo_request; from fraudmesh.service import analyze_for_dashboard; print(json.dumps({name: analyze_for_dashboard(**{ "signals":demo_request(name)["shared_signals"], "scenario_id":"synthetic-"+name}) for name in ["ring","normal","local"]}))'],
+  'import json; from fraudmesh.demo import demo_request; from fraudmesh.service import analyze_for_dashboard; print(json.dumps({name: analyze_for_dashboard(**{ "signals":demo_request(name)["shared_signals"], "scenario_id":"synthetic-"+name}) for name in ["common","ring","normal","local"]}))'],
   {cwd:root,encoding:'utf8'});
 if(generated.status!==0) throw new Error(`Backend fixture generation failed: ${generated.stderr}`);
 const outputs = JSON.parse(generated.stdout);
@@ -19,6 +19,15 @@ test('actual computed backend responses satisfy the dashboard contract',()=>{
   assert.equal(validateAnalysis(outputs.ring).collaborative_alerts.length,1);
   assert.equal(validateAnalysis(outputs.normal).collaborative_alerts.length,0);
   assert.equal(validateAnalysis(outputs.local).banks.reduce((sum,b)=>sum+b.local_ring_count,0),1);
+});
+
+test('shared team scenario preserves 21 computed signals and does not invent an audited raw-row count',()=>{
+  const data=validateAnalysis(outputs.common);
+  assert.equal(data.graph.edges.length,21);
+  assert.equal(data.collaborative_alerts.length,1);
+  assert.equal(data.banks.reduce((sum,b)=>sum+b.local_ring_count,0),1);
+  assert.equal(data.sharing_summary.raw_rows_shared,null);
+  for(const reason of data.collaborative_alerts[0].reasons) assert.ok(reason.code&&reason.title&&reason.detail);
 });
 
 test('local views preserve all bank-contributed signals without joining banks',()=>{

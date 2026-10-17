@@ -1,6 +1,6 @@
 # Integration verification
 
-The integration adds three cross-language tests against actual computed Python outputs, for 13 Node tests total. The API/ML/graph suite contains 38 passing Python tests. Browser verification exercised automatic same-origin loading, computed ring, normal negative control, and local positive control. Final integration checks and remaining LinuxONE work are documented in the root README and docs/linuxone.md. Earlier component-only verification notes follow.
+The integration adds three cross-language tests against actual computed Python outputs, for 14 Node tests total. The API/ML/graph suite contains 63 passing Python tests. Browser verification exercised automatic same-origin loading, computed ring, normal negative control, and local positive control. Final integration checks and remaining LinuxONE work are documented in the root README and docs/linuxone.md. Earlier component-only verification notes follow.
 
 # Verification record
 

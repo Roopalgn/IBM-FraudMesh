@@ -7,14 +7,18 @@ import os
 from collections import defaultdict
 
 from fraudmesh.ml_model import score_transactions
-from fraudmesh.privacy import create_shared_signal
+from fraudmesh.ml_demo import generate_demo_ledger
+from fraudmesh.ml_replay import BankLocalReplay, transform_scored_bank
+from fraudmesh.privacy import create_shared_signal, validate_shared_signals
 
-SCENARIOS = {"ring", "normal", "local"}
+SCENARIOS = {"common", "ring", "normal", "local"}
 
 
 def demo_transactions(name: str = "ring") -> list[dict]:
     if name not in SCENARIOS:
         raise ValueError("Unknown synthetic scenario")
+    if name == "common":
+        return generate_demo_ledger()["transactions"]
     banks = ["BANK_A", "BANK_B", "BANK_C"]
     if name == "normal":
         legs = [(banks[i], f"normal-{i}", f"normal-{i+1}", 200 + i * 50) for i in range(3)]
@@ -57,5 +61,18 @@ def prepare_bank_signals(transactions: list[dict], secret: str) -> list[dict]:
 
 def demo_request(name: str = "ring") -> dict:
     secret = os.environ.get("FRAUDMESH_DEMO_SECRET", "synthetic-demo-only-not-a-production-key")
+    if name == "common":
+        demo = generate_demo_ledger()
+        replay = BankLocalReplay()  # Request-local state; never shared across API clients.
+        scores = [replay.score_new([row])[0] for row in demo["transactions"]]
+        signals = []
+        for bank in ("BANK_A", "BANK_B", "BANK_C"):
+            local = [row for row in demo["transactions"] if row["institution_id"] == bank]
+            ids = {row["transaction_id"] for row in local}
+            references = {row["transaction_id"]: row["signal_id"] for row in demo["local_reference_map"] if row["institution_id"] == bank}
+            signals.extend(transform_scored_bank(
+                local, [row for row in scores if row["transaction_id"] in ids], references,
+                transformer=create_shared_signal, validator=validate_shared_signals, secret=secret))
+        return {"scenario_id": "synthetic-common", "shared_signals": signals}
     return {"scenario_id": f"synthetic-{name}",
             "shared_signals": prepare_bank_signals(demo_transactions(name), secret)}

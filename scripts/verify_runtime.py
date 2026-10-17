@@ -13,12 +13,12 @@ from fraudmesh.service import analyze_for_dashboard
 
 def main():
     results = []
-    for name in ("ring", "normal", "local"):
+    for name in ("common", "ring", "normal", "local"):
         start = perf_counter()
         request = demo_request(name)
         result = analyze_for_dashboard(request["shared_signals"], request["scenario_id"])
         results.append({"scenario": name, "signals": len(request["shared_signals"]),
-                        "local_components": result["comparison"]["local_only"]["alerts_generated"],
+                        "local_structural_findings": result["comparison"]["local_only"]["finding_count"],
                         "multi_bank_cases": len(result["collaborative_alerts"]),
                         "bank_preparation_and_analysis_ms": round((perf_counter()-start)*1000, 3)})
     report = {"architecture": platform.machine(), "python": platform.python_version(),

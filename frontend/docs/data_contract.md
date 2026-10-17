@@ -40,7 +40,7 @@ Edge: `id`, `source`, `target`, `kind`, integer `step` in `[1,200]`, `time_bucke
 
 Alert: `id`, `title`, `severity`, integer `detected_at_step`, `node_ids`, `edge_ids`, `reasons`. Each reason has `code`, `title`, `detail`. Graph references must exist, and no supporting edge may arrive after the alert's detection step. Up to 100 cases are accepted; multiple cases use a case selector. The UI displays a review status, rather than treating an alert as a confirmed fraud verdict.
 
-Sharing summary: nonnegative integer `raw_rows_shared`, string-array `shared_fields`, string-array `retained_local`, explicit boolean `execution_verified`. The fields list describes shared **relationship** fields; pseudonymous node IDs, institution IDs, labels and local risk are also displayed. All claims received from the API are labeled backend-reported. A true execution flag is not remote attestation.
+Sharing summary: `raw_rows_shared` is null for computed API snapshots (not independently audited), or a nonnegative integer in authored fixtures, string-array `shared_fields`, string-array `retained_local`, explicit boolean `execution_verified`. The fields list describes shared **relationship** fields; pseudonymous node IDs, institution IDs, labels and local risk are also displayed. All claims received from the API are labeled backend-reported. A true execution flag is not remote attestation.
 
 ## Display and export boundary
 

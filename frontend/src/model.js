@@ -65,7 +65,7 @@ export function validateAnalysis(input) {
   if (!summary || typeof summary.execution_verified !== 'boolean') throw new Error('sharing_summary.execution_verified must be explicit.');
   return { schema_version: '1.0', scenario_id: string(input.scenario_id, 'scenario_id'), synthetic: input.synthetic,
     banks, graph: { nodes, edges }, collaborative_alerts: alerts,
-    sharing_summary: { raw_rows_shared: integer(summary.raw_rows_shared, 'raw_rows_shared'),
+    sharing_summary: { raw_rows_shared: summary.raw_rows_shared === null ? null : integer(summary.raw_rows_shared, 'raw_rows_shared'),
       shared_fields: strings(summary.shared_fields, 'shared_fields'), retained_local: strings(summary.retained_local, 'retained_local'),
       execution_verified: summary.execution_verified } };
 }

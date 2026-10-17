@@ -4,7 +4,7 @@ const $ = id => document.getElementById(id);
 const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const palette = ['#8da9ff','#c5a1f3','#63cfc4'];
 let data, fixture, step = 0, collaborative = true, selectedBank = null, selectedNode = null, selectedAlert = null;
-let activeView = 'network', timer = null, zoom = 1, source = 'fixture', toastTimer;
+let activeView = 'network', timer = null, zoom = 1, source = 'fixture', toastTimer, caseOnly = true;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const empty = (title, description) => `<div class="empty-state"><span>◇</span><strong>${esc(title)}</strong><p>${esc(description)}</p></div>`;
 const colorFor = id => palette[Math.max(0,data.banks.findIndex(b => b.id === id)) % palette.length];
@@ -15,7 +15,7 @@ function notify(message) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500);
 }
 function setData(next, origin) {
-  stop(); data = next; source = origin; step = maxStep(data); selectedBank = selectedNode = selectedAlert = null; zoom = 1; render();
+  stop(); caseOnly=true; data = next; source = origin; step = maxStep(data); selectedBank = selectedNode = selectedAlert = null; zoom = 1; render();
 }
 function switchView(view, focus = false) {
   activeView = view;
@@ -50,7 +50,7 @@ function render() {
     ['Institutions connected',String(data.banks.length),'Three simulated bank processing stages','⌘',false],
     ['Visible relationships',String(view.edges.length),`${view.crossBankEdges.length} cross-bank ${collaborative ? 'links in view' : 'links visible'}`,'↗',false],
     ['Collaborative cases',String(view.alerts.length),collaborative ? available ? 'Review the evidence before any action' : source==='fixture'?'Waiting for complete relationship evidence':'No multi-bank case detected' : 'Switch to collaborative to inspect cases','◈',true],
-    [collaborative ? 'Raw rows shared' : 'Shared analysis',collaborative ? String(summary.raw_rows_shared) : 'Off',collaborative ? source === 'fixture' ? 'Fixture contract · no raw transaction rows' : 'Backend-reported · not independently audited' : 'Local graph fragments only','◇',collaborative && summary.raw_rows_shared === 0]
+    [collaborative ? summary.raw_rows_shared === null ? 'Raw-row traffic' : 'Raw rows shared' : 'Shared analysis',collaborative ? summary.raw_rows_shared === null ? 'Not audited' : String(summary.raw_rows_shared) : 'Off',collaborative ? source === 'fixture' ? 'Fixture contract · no raw transaction rows' : 'Backend-reported · not independently audited' : 'Local graph fragments only','◇',collaborative && summary.raw_rows_shared === 0]
   ];
   $('metrics').innerHTML = metrics.map(([title,value,note,symbol,accent]) => `<article class="metric"><div class="metric-top"><span>${esc(title)}</span><span class="metric-symbol">${symbol}</span></div><div class="metric-value ${accent?'accent':''}">${esc(value)}</div><div class="metric-note">${esc(note)}</div></article>`).join('');
   $('network-subtitle').textContent = collaborative ? 'Permitted relationship signals across participating institutions' : 'Institution-local links; cross-bank relationships are hidden';
@@ -58,7 +58,12 @@ function render() {
   $('graph-count').textContent = `${view.nodes.length} entity views / ${view.edges.length} links`;
   $('graph-legend-text').textContent = collaborative ? 'Cross-bank relationship' : 'Local relationship';
   $('graph-message').textContent = available ? `${available.id} · ${available.node_ids.length} linked entities · ${available.reasons.length} evidence types` : step === 0 ? 'Start the replay to reveal relationship signals.' : collaborative ? source==='fixture'?'Collecting relationship evidence…':'Analysis complete. No multi-bank case matched.' : 'Bank-local views. Shared entities are shown separately for each contributing bank.';
-  renderGraph(view,available);
+  const focusCase = collaborative && caseOnly && available;
+  const graphView = focusCase ? {...view,nodes:view.nodes.filter(n=>available.node_ids.includes(n.id)),edges:view.edges.filter(e=>available.edge_ids.includes(e.id))} : view;
+  $('graph-scope').disabled=!collaborative || !available;
+  $('graph-scope').textContent=focusCase?'Show all signals':'Focus case';
+  $('graph-count').textContent=`${graphView.nodes.length} entity views / ${graphView.edges.length} links${focusCase?' · case subgraph':''}`;
+  renderGraph(graphView,available);
   renderCase(view,available);
   document.querySelector('.synthetic-label').textContent = data.synthetic ? 'SYNTHETIC' : 'BACKEND';
   document.querySelector('footer>span:last-child').textContent = `Decision support only · ${source==='fixture'?'Synthetic fixture results':'Backend-reported results'} · No production privacy guarantee`;
@@ -68,12 +73,12 @@ function render() {
   $('banks').innerHTML = data.banks.map(b => {
     const bankEdges = view.edges.filter(e => e.institution_id ? e.institution_id===b.id : view.nodeMap.get(e.source).bank_ids.includes(b.id) || view.nodeMap.get(e.target).bank_ids.includes(b.id));
     const active = bankEdges.length > 0;
-    return `<button class="bank-card ${selectedBank===b.id?'selected':''}" data-bank="${esc(b.id)}" aria-pressed="${selectedBank===b.id}"><div class="bank-card-heading"><div class="bank-name"><span class="bank-icon" style="color:${colorFor(b.id)}">${esc(b.name.replace('Bank ',''))}</span>${esc(b.name)}</div><span class="local-badge">${source==='fixture'?'Simulated institution':'Backend output'}</span></div><div class="bank-stats"><div><strong>${b.entity_count}</strong>Entities in scenario</div><div><strong>${active?b.local_alerts:0}</strong>Local flags</div><div><strong>${active?b.local_ring_count:0}</strong>Local components</div></div><div class="bank-bottom"><span>◇</span>${selectedBank===b.id?'Focused · select again to clear':'Focus institution entities →'}</div></button>`;
+    return `<button class="bank-card ${selectedBank===b.id?'selected':''}" data-bank="${esc(b.id)}" aria-pressed="${selectedBank===b.id}"><div class="bank-card-heading"><div class="bank-name"><span class="bank-icon" style="color:${colorFor(b.id)}">${esc(b.name.replace('Bank ',''))}</span>${esc(b.name)}</div><span class="local-badge">${source==='fixture'?'Simulated institution':'Backend output'}</span></div><div class="bank-stats"><div><strong>${b.entity_count}</strong>Entities in scenario</div><div><strong>${active?b.local_alerts:0}</strong>Local flags</div><div><strong>${active?b.local_ring_count:0}</strong>Local patterns</div></div><div class="bank-bottom"><span>◇</span>${selectedBank===b.id?'Focused · select again to clear':'Focus institution entities →'}</div></button>`;
   }).join('');
   const ringCount = step === maxStep(data) ? data.collaborative_alerts.length : view.alerts.length;
   const denominator = Math.max(1,localCount,ringCount);
-  $('comparison').innerHTML = `<div class="bar-row"><span>Local components</span><div class="bar-track"><div class="bar-fill local" style="width:${100*localCount/denominator}%"></div></div><strong>${localCount}</strong></div><div class="bar-row"><span>Shared cases</span><div class="bar-track"><div class="bar-fill" style="width:${100*ringCount/denominator}%"></div></div><strong>${ringCount}</strong></div><small>${source==='fixture'?'Fixture counts':'Backend-reported counts'} · ${step===maxStep(data)?'complete scenario':'current replay step'} · not a general accuracy benchmark</small>`;
-  $('comparison-description').textContent = source === 'fixture' ? 'Each bank sees a local fragment. Permitted relationship signals reveal the complete cycle.' : 'Compare suspicious components found using each bank’s own signals with multi-bank cases. Counts use different visibility scopes and do not establish model accuracy.';
+  $('comparison').innerHTML = `<div class="bar-row"><span>Local patterns</span><div class="bar-track"><div class="bar-fill local" style="width:${100*localCount/denominator}%"></div></div><strong>${localCount}</strong></div><div class="bar-row"><span>Shared cases</span><div class="bar-track"><div class="bar-fill" style="width:${100*ringCount/denominator}%"></div></div><strong>${ringCount}</strong></div><small>${source==='fixture'?'Fixture counts':'Backend-reported counts'} · ${step===maxStep(data)?'complete scenario':'current replay step'} · not a general accuracy benchmark</small>`;
+  $('comparison-description').textContent = source === 'fixture' ? 'Each bank sees a local fragment. Permitted relationship signals reveal the complete cycle.' : 'Compare structural patterns found using each bank’s own signals with multi-bank cases. Counts use different visibility scopes and do not establish model accuracy.';
   switchView(activeView);
 }
 
@@ -127,7 +132,7 @@ function renderEvidence(view) {
 }
 function renderPrivacy() {
   const s = data.sharing_summary;
-  $('view-privacy').innerHTML = `<h3>A visible, limited sharing boundary</h3><p>${source==='fixture'?'The bundled fixture contains only pseudonymous graph display data. The browser does not contain simulated raw banking records.':'This panel describes the backend’s reported sharing policy; it does not independently audit bank-side traffic.'}</p><div class="privacy-columns"><div class="privacy-card local"><h3>01 / Retained at each bank</h3><ul>${s.retained_local.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div><div class="privacy-card"><h3>02 / Relationship fields</h3><ul>${s.shared_fields.map(f=>`<li><code>${esc(f)}</code></li>`).join('')}</ul></div></div><div class="boundary-note"><strong>${s.raw_rows_shared} raw transaction rows shared</strong> · ${source==='fixture'?'fixture declaration, not a measured production result':'backend-reported value'}. Institution ID, pseudonymous entity IDs and local risk are also returned for display.</div><div class="case-section-title">SECURITY STATUS & LIMITS</div><p>Confidential execution: <strong>${source==='fixture'?'unverified':s.execution_verified?'backend reports verified; not attested by this UI':'unverified'}</strong>. Pseudonymization is not anonymity. Relationships, risk bands and timing buckets can expose patterns. Authentication, authorization, key management, retention controls and deployment attestation belong to the integrated system.</p><p>The local-only toggle is a visual comparison. It is not an access-control boundary; this browser receives the whole analysis response. Replay history is an in-memory presentation trail, not a tamper-evident backend audit log.</p>`;
+  $('view-privacy').innerHTML = `<h3>A visible, limited sharing boundary</h3><p>${source==='fixture'?'The bundled fixture contains only pseudonymous graph display data. The browser does not contain simulated raw banking records.':'This panel describes the backend’s reported sharing policy; it does not independently audit bank-side traffic.'}</p><div class="privacy-columns"><div class="privacy-card local"><h3>01 / Retained at each bank</h3><ul>${s.retained_local.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div><div class="privacy-card"><h3>02 / Relationship fields</h3><ul>${s.shared_fields.map(f=>`<li><code>${esc(f)}</code></li>`).join('')}</ul></div></div><div class="boundary-note"><strong>${s.raw_rows_shared===null?'Raw-row traffic is not independently audited':`${s.raw_rows_shared} raw transaction rows shared`}</strong> · ${source==='fixture'?'fixture declaration, not a measured production result':'backend-reported value'}. Institution ID, pseudonymous entity IDs and local risk are also returned for display.</div><div class="case-section-title">SECURITY STATUS & LIMITS</div><p>Confidential execution: <strong>${source==='fixture'?'unverified':s.execution_verified?'backend reports verified; not attested by this UI':'unverified'}</strong>. Pseudonymization is not anonymity. Relationships, risk bands and timing buckets can expose patterns. Authentication, authorization, key management, retention controls and deployment attestation belong to the integrated system.</p><p>The local-only toggle is a visual comparison. It is not an access-control boundary; this browser receives the whole analysis response. Replay history is an in-memory presentation trail, not a tamper-evident backend audit log.</p>`;
 }
 function renderTrail(view) {
   $('view-audit').innerHTML = `<h3>${source==='fixture'?'Synthetic replay trail':'Backend snapshot relationships'}</h3><p>${source==='fixture'?'A deterministic presentation of the bundled fixture. These are scenario time buckets, not system logs.':'Relationships from the returned analysis. This panel is not a persisted or verified audit log.'}</p><div class="trail-row"><span>INIT</span><div><strong>${data.banks.length} institutions in the scenario</strong><p>${collaborative?'Collaborative relationship view enabled.':'Local view enabled; cross-bank relationships hidden.'}</p></div></div>${view.edges.map(e=>`<div class="trail-row"><span>${esc(e.time_bucket)}</span><div><strong>${esc(e.source)} → ${esc(e.target)}</strong><p>${esc(e.id)} · ${esc(e.kind)} · ${esc(e.risk_band)} risk band</p></div></div>`).join('')}${view.alerts.map(a=>`<div class="trail-row"><span>CASE</span><div><strong>${esc(a.id)} · ${esc(a.title)}</strong><p>${a.edge_ids.length} supporting links; ${a.reasons.length} reason codes. Investigator review required.</p></div></div>`).join('')}`;
@@ -147,6 +152,7 @@ document.querySelector('.tabbar').addEventListener('keydown',e=>{
   e.preventDefault();const names=['network','evidence','privacy','audit'];let i=names.indexOf(activeView);
   i=e.key==='Home'?0:e.key==='End'?3:(i+(e.key==='ArrowRight'?1:3))%4;switchView(names[i],true);
 });
+$('graph-scope').onclick=()=>{caseOnly=!caseOnly;render();};
 $('local-mode').onclick=()=>{collaborative=false;render();}; $('collab-mode').onclick=()=>{collaborative=true;render();};
 $('reset-button').onclick=()=>{stop();step=0;selectedNode=selectedBank=null;render();notify('Scenario reset. Use Step or Play to begin.');};
 $('step-button').onclick=()=>{stop();step=Math.min(step+1,maxStep(data));render();};

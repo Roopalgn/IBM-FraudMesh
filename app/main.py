@@ -15,6 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from fraudmesh.demo import demo_request
+from fraudmesh.graph_engine import AnalysisCapacityError
 from fraudmesh.privacy import PrivacyContractError, validate_shared_signals
 from fraudmesh.service import analyze_for_dashboard
 
@@ -24,7 +25,7 @@ MAX_BODY_BYTES = 128_000
 
 class AnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
-    scenario_id: Literal["synthetic-ring", "synthetic-normal", "synthetic-local", "synthetic-custom"] = "synthetic-custom"
+    scenario_id: Literal["synthetic-common", "synthetic-ring", "synthetic-normal", "synthetic-local", "synthetic-custom"] = "synthetic-custom"
     shared_signals: list[dict] = Field(max_length=200)
 
 
@@ -64,7 +65,7 @@ def health():
 
 
 @app.get("/demo/scenario")
-def scenario(name: Annotated[Literal["ring", "normal", "local"], Query()] = "ring"):
+def scenario(name: Annotated[Literal["common", "ring", "normal", "local"], Query()] = "common"):
     return {"synthetic": True, "analysis_request": demo_request(name)}
 
 
@@ -72,7 +73,8 @@ def scenario(name: Annotated[Literal["ring", "normal", "local"], Query()] = "rin
 def analyze(payload: AnalysisRequest):
     start = perf_counter()
     try:
-        validate_shared_signals(payload.shared_signals)
+        if payload.shared_signals:
+            validate_shared_signals(payload.shared_signals)
         nodes = {signal[field] for signal in payload.shared_signals
                  for field in ("source_entity_token", "destination_entity_token")}
         if len(nodes) > 60:
@@ -80,6 +82,8 @@ def analyze(payload: AnalysisRequest):
         result = analyze_for_dashboard(payload.shared_signals, payload.scenario_id)
     except PrivacyContractError as exc:
         raise HTTPException(422, str(exc)) from exc
+    except AnalysisCapacityError as exc:
+        raise HTTPException(413, str(exc)) from exc
     result["measurement"] = {"analysis_ms": round((perf_counter()-start)*1000, 3),
                              "scope": "Signal validation, graph comparison, and response construction; excludes local ML, network, and rendering."}
     return result

@@ -5,12 +5,12 @@ The integration has been tested locally. These steps must run on your actual Lin
 ## First deployment in PuTTY
 
 ```bash
-git clone --branch codex/integration https://github.com/Roopalgn/IBM-FraudMesh.git ~/fraudmesh-integrated
+git clone --branch main https://github.com/Roopalgn/IBM-FraudMesh.git ~/fraudmesh-integrated
 cd ~/fraudmesh-integrated
 bash scripts/check_linuxone.sh
 ```
 
-If ~/fraudmesh-integrated already exists, inspect it first. For an existing clean integration checkout use `git status --short`, then `git pull --ff-only`; do not reset or discard server changes. Do not repeat git clone into an existing directory.
+If ~/fraudmesh-integrated already exists, inspect it first. For an existing clean checkout of main use `git status --short`, then `git pull --ff-only`; do not reset or discard server changes. Do not repeat git clone into an existing directory.
 
 The script creates/reuses a dedicated virtual environment, installs the lean runtime and HTTP test dependency, checks package consistency, runs all Python tests, reproduces ML evaluation, and writes platform/scenario evidence under ignored output/. No sudo, Docker, scientific-library builds, or firewall changes are required. Stop and preserve the error if a command fails.
 
@@ -51,10 +51,11 @@ Expected architecture is s390x. The report always states confidential_execution_
 ## Demo sequence
 
 1. Open the tunneled dashboard. The header should say API / synthetic data.
-2. Run Cross-bank ring: 0 local components, 1 multi-bank case.
-3. Switch to Local only to see separate institution views; switch back and inspect the supporting evidence.
-4. Run Normal activity: 0 local components, 0 multi-bank cases.
-5. Run Local positive control: 1 local component, 0 multi-bank cases. This shows local detection is not disabled.
-6. Explain the HMAC/coarse-signal boundary and its linkability limitations.
+2. Run Shared team scenario: 21 transfers, 1 local payroll fan-out finding, and 1 multi-bank cycle. Explain that the legitimate payroll finding is a false positive. Use Show all signals to inspect the background; the initial graph focuses the selected case.
+3. Run Cross-bank ring: 0 local patterns, 1 multi-bank case.
+4. Switch to Local only to see separate institution views; switch back and inspect the supporting evidence.
+5. Run Normal activity: 0 local patterns, 0 multi-bank cases.
+6. Run Local positive control: 1 local pattern, 0 multi-bank cases. This shows local detection is not disabled.
+7. Explain the HMAC/coarse-signal boundary and its linkability limitations.
 
 These are scenario outcomes, not a general production improvement benchmark. Record a backup video and finish the event submission/pitch separately.
