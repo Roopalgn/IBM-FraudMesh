@@ -1,12 +1,16 @@
 import { validateAnalysis, deriveView, maxStep, caseExport } from './model.js';
+import { adaptGraphResponse } from './graph-adapter.js';
 import { loadAnalysis } from './api.js';
 
 const $ = id => document.getElementById(id);
 const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const palette = ['#8da9ff','#c5a1f3','#63cfc4'];
 let data, fixture, step = 0, collaborative = true, selectedBank = null, selectedNode = null, selectedAlert = null;
-let activeView = 'network', timer = null, zoom = 1, source = 'fixture', toastTimer, caseOnly = true;
-let connectionController=null, requestEpoch=0;
+let activeView = 'network', timer = null, zoom = 1, source = 'fixture', toastTimer;
+let connectionController = null, liveScenarioName='common', caseOnly=true, requestEpoch=0;
+const display = value => value == null ? 'Unavailable' : String(value);
+const membershipNames = n => n.bank_ids.map(id=>data.banks.find(b=>b.id===id)?.name||id).join(', ') || 'Membership unavailable';
+const sourceLabel = () => source === 'fixture' ? 'Authored synthetic replay' : source === 'saved-api' ? 'Saved API result · synthetic' : source === 'computed-fixture' ? 'Generated synthetic snapshot' : data.api_service==='frontend-contract-test-harness' ? 'API test harness · synthetic' : data.synthetic ? 'API · synthetic data' : 'API · backend output';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const empty = (title, description) => `<div class="empty-state"><span>◇</span><strong>${esc(title)}</strong><p>${esc(description)}</p></div>`;
 const colorFor = id => palette[Math.max(0,data.banks.findIndex(b => b.id === id)) % palette.length];
@@ -17,7 +21,7 @@ function notify(message) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500);
 }
 function setData(next, origin) {
-  stop(); caseOnly=true; data = next; source = origin; step = maxStep(data); selectedBank = selectedNode = selectedAlert = null; zoom = 1; render();
+  stop(); caseOnly=true; data = next; source = origin; step = maxStep(data); selectedBank = collaborative ? null : data.banks[0]?.id || null; selectedNode = selectedAlert = null; zoom = 1; render();
 }
 function switchView(view, focus = false) {
   activeView = view;
@@ -31,62 +35,57 @@ function switchView(view, focus = false) {
 }
 function render() {
   if (!data) return;
-  const view = deriveView(data,step,collaborative);
+  const view = deriveView(data,step,collaborative,selectedBank);
+  if(selectedNode && !view.nodes.some(n=>n.id===selectedNode))selectedNode=null;
   const available = view.alerts.find(a => a.id === selectedAlert) || view.alerts[0];
   selectedAlert = available?.id || null;
-  $('result-context').textContent=source==='fixture'?'Authored outcomes; replay does not run a detector.':source==='snapshot'?`Saved computed output · backend ${data.provenance.backend_commit.slice(0,7)} · no live request or timing measurement.`:data.measurement?`Backend analysis: ${data.measurement.analysis_ms} ms. ${data.measurement.scope}`:'API snapshot; analysis timing unavailable.';
-  const localCount = data.banks.reduce((n,b) => n + b.local_ring_count, 0);
   const summary = data.sharing_summary;
-  $('source-badge').innerHTML = `<i></i>${source === 'fixture' ? 'Authored synthetic replay' : source === 'snapshot' ? 'Saved computed · synthetic' : 'API · synthetic data'}`;
-  document.querySelector('.eyebrow').innerHTML = `COLLABORATIVE INTELLIGENCE <span>/</span> CASE ${esc(data.scenario_id)}`;
+  $('result-context').textContent=source==='saved-api'?`Saved output · backend ${data.saved_provenance.backend_commit.slice(0,7)} · no live request or measured replay timing.`:source==='api'?(data.measurement?`${data.measurement.analysis_ms} ms backend analysis. ${data.measurement.scope}`:'Analysis timing unavailable.'):'Synthetic fixture; not measured detection timing.';
+  $('source-badge').innerHTML = `<i></i>${esc(sourceLabel())}`;
+  $('demo-source').value = source === 'saved-api' ? 'saved-'+data.saved_provenance.scenario : source === 'api' ? liveScenarioName==='common'?'api':`api-${liveScenarioName}` : source === 'fixture' ? 'authored' : data.scenario_id.replace('computed-','');
+  document.querySelector('.eyebrow').innerHTML = `COLLABORATIVE INTELLIGENCE <span>/</span> ${esc(data.scenario_id)}`;
   $('disclosure').innerHTML = source === 'fixture'
-    ? '<strong>A controlled scenario, not a production verdict.</strong> All entities and results below are synthetic fixtures.'
-    : `<strong>Computed ${data.synthetic ? 'synthetic' : 'analysis'} outputs.</strong> Results and sharing claims have not been independently verified by this dashboard.`;
-  document.querySelector('.environment small').textContent = `Confidential execution: ${summary.execution_verified?'unverified (backend flag only)':'unverified'}`;
+    ? '<strong>Authored synthetic replay.</strong> Outcomes and scores are pre-authored; no detector runs in the browser.'
+    : source === 'saved-api' ? '<strong>Saved computed API result.</strong> Same primary response schema, with provenance. This is not a live request or deployment verification.'
+    : source === 'computed-fixture'
+    ? '<strong>Computed synthetic result, saved for integration.</strong> Generated by the pinned graph detector. Live API and LinuxONE deployment remain unverified.'
+    : data.api_service==='frontend-contract-test-harness' ? '<strong>Synthetic API contract test harness.</strong> Saved graph output or test-only variants; no live detector is running.'
+    : `<strong>API output · ${data.synthetic?'synthetic data':'backend-declared data'}.</strong> Service response; this UI does not verify deployment or privacy claims.`;
+  document.querySelector('.environment small').textContent = 'Confidential execution: unverified';
+  document.querySelector('.page-heading p').textContent = `${data.banks.length} contributing institutions. Inspect relationships and the evidence behind each case.`;
   $('local-mode').classList.toggle('selected',!collaborative); $('collab-mode').classList.toggle('selected',collaborative);
   $('local-mode').setAttribute('aria-pressed',String(!collaborative)); $('collab-mode').setAttribute('aria-pressed',String(collaborative));
-  $('replay-status').textContent = source === 'snapshot' ? 'Saved computed snapshot' : source !== 'fixture' ? 'Backend snapshot' : step === maxStep(data) ? 'Scenario complete' : `Event ${step} of ${maxStep(data)}`;
-  $('play-button').textContent = timer ? 'Ⅱ Pause replay' : step === maxStep(data) ? '▶ Replay scenario' : '▶ Play scenario';
-  for (const id of ['play-button','step-button','reset-button']) $(id).disabled = source !== 'fixture';
-  $('step-button').disabled ||= step >= maxStep(data);
+  $('replay-status').textContent = !data.replay_supported ? source==='api'?'API snapshot':'Generated snapshot' : step===maxStep(data)?'Replay complete':`Event ${step} of ${maxStep(data)}`;
+  $('play-button').textContent = timer?'Ⅱ Pause replay':step===maxStep(data)?'▶ Replay scenario':'▶ Play scenario';
+  for(const id of ['play-button','step-button','reset-button'])$(id).disabled=!data.replay_supported;
+  $('step-button').disabled ||= step>=maxStep(data);
+  const rawValue = source==='fixture'?summary.raw_rows_shared:summary.raw_rows_received;
   const metrics = [
-    ['Institutions connected',String(data.banks.length),'Three simulated bank processing stages','⌘',false],
-    ['Visible relationships',String(view.edges.length),`${view.crossBankEdges.length} cross-bank ${collaborative ? 'links in view' : 'links visible'}`,'↗',false],
-    ['Collaborative cases',String(view.alerts.length),collaborative ? available ? 'Review the evidence before any action' : source==='fixture'?'Waiting for complete relationship evidence':'No multi-bank case detected' : 'Switch to collaborative to inspect cases','◈',true],
-    [collaborative ? summary.raw_rows_shared === null ? 'Raw-row traffic' : 'Raw rows shared' : 'Shared analysis',collaborative ? summary.raw_rows_shared === null ? 'Not audited' : String(summary.raw_rows_shared) : 'Off',collaborative ? source === 'fixture' ? 'Fixture contract · no raw transaction rows' : 'Backend-reported · not independently audited' : 'Local graph fragments only','◇',collaborative && summary.raw_rows_shared === 0]
+    ['Contributing institutions',data.banks.length,'Signal contributors; not entity ownership','⌘',false],
+    ['Visible relationships',view.edges.length,collaborative?'All contributed signals':selectedBank?`Contributed by ${data.banks.find(b=>b.id===selectedBank)?.name}`:'No institution selected','↗',false],
+    ['Combined structures',collaborative?view.alerts.length:null,collaborative?(source==='fixture'?'Pre-authored outcome; no detector running':data.review_queue?`${data.review_queue.combined_recommended} recommended by ML-informed policy`:'Structural candidates, not confirmed fraud'):'Switch to collaborative to see complete cases','◈',collaborative],
+    [source==='fixture'?'Raw rows shared':'Raw rows received',rawValue,source==='fixture'?'Authored fixture declaration':'Backend declaration; received does not mean shared','◇',rawValue===0]
   ];
-  $('metrics').innerHTML = metrics.map(([title,value,note,symbol,accent]) => `<article class="metric"><div class="metric-top"><span>${esc(title)}</span><span class="metric-symbol">${symbol}</span></div><div class="metric-value ${accent?'accent':''}">${esc(value)}</div><div class="metric-note">${esc(note)}</div></article>`).join('');
-  $('network-subtitle').textContent = collaborative ? 'Permitted relationship signals across participating institutions' : 'Institution-local links; cross-bank relationships are hidden';
-  $('bank-legend').innerHTML = data.banks.map(b=>`<span><i class="legend-dot" style="background:${colorFor(b.id)}"></i>${esc(b.name)}</span>`).join('');
-  $('graph-count').textContent = `${view.nodes.length} entity views / ${view.edges.length} links`;
-  $('graph-legend-text').textContent = collaborative ? 'Cross-bank relationship' : 'Local relationship';
-  $('graph-message').textContent = available ? `${available.id} · ${available.node_ids.length} linked entities · ${available.reasons.length} evidence types` : step === 0 ? 'Start the replay to reveal relationship signals.' : collaborative ? source==='fixture'?'Collecting relationship evidence…':'Analysis complete. No multi-bank case matched.' : 'Bank-local views. Shared entities are shown separately for each contributing bank.';
-  const focusCase = collaborative && caseOnly && available;
-  const graphView = focusCase ? {...view,nodes:view.nodes.filter(n=>available.node_ids.includes(n.id)),edges:view.edges.filter(e=>available.edge_ids.includes(e.id))} : view;
-  $('graph-scope').disabled=!collaborative || !available;
-  $('graph-scope').textContent=focusCase?'Show all signals':'Focus case';
-  $('graph-count').textContent=`${graphView.nodes.length} entity views / ${graphView.edges.length} links${focusCase?' · case subgraph':''}`;
-  renderGraph(graphView,available);
-  renderCase(view,available);
-  document.querySelector('.synthetic-label').textContent = data.synthetic ? 'SYNTHETIC' : 'BACKEND';
-  document.querySelector('footer>span:last-child').textContent = `Decision support only · ${source==='fixture'?'Synthetic fixture results':'Backend-reported results'} · No production privacy guarantee`;
-  renderEvidence(view,available);
-  renderPrivacy();
-  renderTrail(view);
-  $('banks').innerHTML = data.banks.map(b => {
-    const bankEdges = view.edges.filter(e => e.institution_id ? e.institution_id===b.id : view.nodeMap.get(e.source).bank_ids.includes(b.id) || view.nodeMap.get(e.target).bank_ids.includes(b.id));
-    const active = bankEdges.length > 0;
-    return `<button class="bank-card ${selectedBank===b.id?'selected':''}" data-bank="${esc(b.id)}" aria-pressed="${selectedBank===b.id}"><div class="bank-card-heading"><div class="bank-name"><span class="bank-icon" style="color:${colorFor(b.id)}">${esc(b.name.replace('Bank ',''))}</span>${esc(b.name)}</div><span class="local-badge">${source==='fixture'?'Simulated institution':'Backend output'}</span></div><div class="bank-stats"><div><strong>${b.entity_count}</strong>Entities in scenario</div><div><strong>${active?b.local_alerts:0}</strong>Local flags</div><div><strong>${active?b.local_ring_count:0}</strong>Local patterns</div></div><div class="bank-bottom"><span>◇</span>${selectedBank===b.id?'Focused · select again to clear':'Focus institution entities →'}</div></button>`;
-  }).join('');
-  const ringCount = step === maxStep(data) ? data.collaborative_alerts.length : view.alerts.length;
-  const transactionFlags=data.banks.reduce((sum,b)=>sum+b.local_alerts,0);
-  const combinedPatterns=data.comparison?.combined_patterns ?? null;
-  $('comparison').innerHTML=[['Transaction-risk flags',transactionFlags],['Local structural patterns',localCount],['Combined structural patterns',combinedPatterns],['Multi-bank cases',ringCount]].map(([label,value])=>`<div class="result-unit"><span>${label}</span><strong>${value===null?'Unavailable':value}</strong></div>`).join('')+'<small>Different units and scopes; not an accuracy improvement.</small>';
-  document.querySelector('.comparison-panel h2').textContent='Understand the result, not an uplift ratio.';
-  $('comparison-description').textContent='Transaction flags, local structures, combined structures and multi-bank cases are distinct outputs. The shared team example includes a local payroll fan-out false positive.';
+  $('metrics').innerHTML=metrics.map(([title,value,note,symbol,accent])=>`<article class="metric"><div class="metric-top"><span>${esc(title)}</span><span class="metric-symbol">${symbol}</span></div><div class="metric-value ${accent?'accent':''} ${value==null?'unavailable':''}">${esc(display(value))}</div><div class="metric-note">${esc(note)}</div></article>`).join('');
+  $('network-subtitle').textContent=collaborative?'Entities can appear in relationships contributed by several banks':'Local view uses the selected bank’s contributed signals; no bank login is performed';
+  $('bank-legend').innerHTML=data.banks.map(b=>`<span><i class="legend-dot" style="background:${colorFor(b.id)}"></i>${esc(b.name)}</span>`).join('');
+  $('graph-count').textContent=`${view.nodes.length} entities / ${view.edges.length} links`;
+  $('graph-legend-text').textContent='Selected-case evidence is highlighted';
+  $('graph-message').textContent=available?`${available.id} · ${available.edge_ids.length} supporting signals`:!data.graph.nodes.length?'No entities or cases returned.':data.replay_supported&&step<maxStep(data)?'Reveal more authored evidence with Step or Play.':collaborative?'No collaborative cases in this result.':'Only the selected institution’s signals are visible.';
+  const focus=collaborative&&caseOnly&&available;
+  const graphView=focus?{...view,nodes:view.nodes.filter(n=>available.node_ids.includes(n.id)),edges:view.edges.filter(e=>available.edge_ids.includes(e.id))}:view;
+  $('graph-scope').disabled=!available||!collaborative;$('graph-scope').textContent=focus?'Show all signals':'Focus case';
+  $('graph-count').textContent=`${graphView.nodes.length} entities / ${graphView.edges.length} links${focus?' · selected structure':''}`;
+  renderGraph(graphView,available);renderCase(view,available);renderEvidence(view,available);renderPrivacy();renderTrail(view);
+  document.querySelector('.synthetic-label').textContent=data.synthetic?'SYNTHETIC':'BACKEND';
+  document.querySelector('footer>span:last-child').textContent=`Decision support only · ${sourceLabel()} · Confidential execution unverified`;
+  $('banks').innerHTML=data.banks.map(b=>`<button class="bank-card ${selectedBank===b.id?'selected':''}" data-bank="${esc(b.id)}" aria-pressed="${selectedBank===b.id}"><div class="bank-card-heading"><div class="bank-name"><span class="bank-icon" style="color:${colorFor(b.id)}">${esc(b.name.slice(-1))}</span>${esc(b.name)}</div><span class="local-badge">${source==='fixture'?'Authored':'Computed'} summary</span></div><div class="bank-stats"><div><strong>${display(b.entity_count)}</strong>Entities in contributed links</div><div><strong class="${b.local_alerts==null?'unavailable':''}">${display(b.local_alerts)}</strong>Transaction-risk flags</div><div><strong class="${b.local_ring_count==null?'unavailable':''}">${display(b.local_ring_count)}</strong>Local structures</div></div><div class="bank-bottom"><span>◇</span>${selectedBank===b.id?'Selected institution':'Inspect contributed relationships →'}</div></button>`).join('') || empty('No bank summaries','The service returned an empty result.');
+  const total = key => data.banks.length && data.banks.every(b=>b[key]!=null) ? data.banks.reduce((n,b)=>n+b[key],0) : null;
+  const collaborativeCount = data.replay_supported ? deriveView(data,step,true).alerts.length : data.collaborative_alerts.length;
+  $('comparison').innerHTML=`<div class="unit-row"><span>Local transaction-risk flags</span><strong>${display(total('local_alerts'))}</strong></div><div class="unit-row"><span>Local suspicious structures</span><strong>${display(total('local_ring_count'))}</strong></div><div class="unit-row"><span>Collaborative cases</span><strong>${collaborativeCount}</strong></div><small>Different units · no accuracy or improvement ratio</small>`;
+  $('comparison-description').textContent=data.comparison.note;
   switchView(activeView);
 }
-
 function renderGraph(view,alert) {
   const svg = $('graph');
   const fixed = [[180,120],[180,275],[440,320],[700,275],[700,120],[440,65]];
@@ -98,52 +97,51 @@ function renderGraph(view,alert) {
   let html = `<defs><marker id="arrow" markerWidth="7" markerHeight="7" refX="27" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3.5L0 7" fill="#b9f077"/></marker><marker id="local-arrow" markerWidth="7" markerHeight="7" refX="27" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3.5L0 7" fill="#73849a"/></marker></defs><g transform="translate(440 200) scale(${zoom}) translate(-440 -200)"><ellipse cx="440" cy="200" rx="265" ry="135" fill="none" stroke="#2b3543" stroke-dasharray="3 8"/><ellipse cx="440" cy="200" rx="195" ry="95" fill="none" stroke="#212d3a"/>`;
   for (const edge of view.edges) {
     const [x1,y1] = positions.get(edge.source), [x2,y2] = positions.get(edge.target);
-    const cross = collaborative && (edge.institution_id ? [edge.source,edge.target].some(id=>view.nodeMap.get(id).bank_ids.length>1) : view.nodeMap.get(edge.source).bank_id !== view.nodeMap.get(edge.target).bank_id);
+    const cross = edge.contributing_bank_id === null;
     const highlighted = alertEdges.has(edge.id);
-    const dimmed = selectedBank && (edge.institution_id ? edge.institution_id!==selectedBank : ![...view.nodeMap.get(edge.source).bank_ids,...view.nodeMap.get(edge.target).bank_ids].includes(selectedBank));
-    html += `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${highlighted?'#b9f077':cross?'#8aa775':'#73849a'}" stroke-width="${highlighted?2:1.4}" ${cross?'stroke-dasharray="6 5"':''} opacity="${dimmed?.2:.85}" marker-end="url(#${highlighted||cross?'arrow':'local-arrow'})"><title>${esc(edge.id)}: ${esc(edge.source)} → ${esc(edge.target)} · ${esc(edge.time_bucket)}</title></path>`;
+    const dimmed = collaborative && selectedBank && edge.contributing_bank_id !== selectedBank;
+    html += `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${highlighted?'#b9f077':cross?'#8aa775':colorFor(edge.contributing_bank_id)}" stroke-width="${highlighted?2:1.4}" ${cross?'stroke-dasharray="6 5"':''} opacity="${dimmed?.2:.85}" marker-end="url(#${highlighted||cross?'arrow':'local-arrow'})"><title>${esc(edge.id)}: ${esc(edge.source)} → ${esc(edge.target)} · ${esc(edge.time_bucket||'time unavailable')}</title></path>`;
   }
-  html += `<text x="440" y="186" text-anchor="middle" fill="${alert?'#b9f077':'#6f8196'}" font-family="Consolas,monospace" font-size="10" letter-spacing="2">${collaborative?'SHARED INTELLIGENCE':'LOCAL VISIBILITY'}</text><text x="440" y="213" text-anchor="middle" fill="#cad4e2" font-size="18">${alert?'A connected case':collaborative?(source==='fixture'?'Building the picture':'No multi-bank case'):'Bank-local views'}</text><text x="440" y="235" text-anchor="middle" fill="#8091a7" font-size="10">${alert?`${alert.node_ids.length} pseudonymous entities`:'Select an entity to inspect local risk'}</text>`;
+  const graphStatus=alert?'A connected case':!collaborative?'Institution signal view':data.replay_supported&&step<maxStep(data)?'Building the picture':'No case in this result';
+  html += `<text x="440" y="186" text-anchor="middle" fill="${alert?'#b9f077':'#6f8196'}" font-family="Consolas,monospace" font-size="10" letter-spacing="2">${collaborative?'SHARED INTELLIGENCE':'LOCAL VISIBILITY'}</text><text x="440" y="213" text-anchor="middle" fill="#cad4e2" font-size="18">${graphStatus}</text><text x="440" y="235" text-anchor="middle" fill="#8091a7" font-size="10">${alert?`${alert.node_ids.length} pseudonymous entities`:view.nodes.length?'Select an entity to inspect membership':'No entities in this view'}</text>`;
   for (const node of view.nodes) {
-    const [x,y] = positions.get(node.id), color = node.bank_ids.length>1?'#b6cbaf':colorFor(node.bank_id);
+    const [x,y] = positions.get(node.id), color = node.bank_ids.length===1?colorFor(node.bank_ids[0]):'#b8c9ac';
     const active = view.edges.some(e => e.source===node.id || e.target===node.id);
     const dimmed = selectedBank && !node.bank_ids.includes(selectedBank);
     const selected = selectedNode===node.id;
-    const bank = data.banks.find(b=>b.id===node.bank_id);
-    const memberships = node.bank_ids.map(id=>data.banks.find(b=>b.id===id).name).join(' / ');
-    html += `<g class="node" data-node="${esc(node.id)}" role="button" tabindex="0" aria-label="Inspect ${esc(node.label)}, ${esc(bank.name)}, maximum incident transaction score ${node.local_risk.toFixed(2)} (uncalibrated)" opacity="${dimmed?.25:active?1:.45}"><circle cx="${x}" cy="${y}" r="${selected?30:27}" fill="${color}" fill-opacity=".07" stroke="${selected?'#b9f077':color}" stroke-opacity=".3"/><circle cx="${x}" cy="${y}" r="20" fill="#1e2938" stroke="${color}" stroke-width="1.5"/><text x="${x}" y="${y+4}" text-anchor="middle" fill="${color}" font-size="12">${node.bank_ids.length>1?node.bank_ids.length+'B':esc(bank.name.replace('Bank ',''))}</text><text x="${x}" y="${y+45}" text-anchor="middle" fill="#d6dfed" font-size="11">${esc(node.label)}</text><text x="${x}" y="${y+61}" text-anchor="middle" fill="#788a9f" font-size="9">${esc(memberships)} · ${node.local_risk.toFixed(2)} max incident score</text></g>`;
+    const membership = membershipNames(node);
+    html += `<g class="node" data-node="${esc(node.id)}" role="button" tabindex="0" aria-label="Inspect ${esc(node.label)}, ${esc(membership)}, node score ${node.local_risk==null?'unavailable':node.local_risk}" opacity="${dimmed?.25:active?1:.45}"><circle cx="${x}" cy="${y}" r="${selected?30:27}" fill="${color}" fill-opacity=".07" stroke="${selected?'#b9f077':color}" stroke-opacity=".3"/><circle cx="${x}" cy="${y}" r="20" fill="#1e2938" stroke="${color}" stroke-width="1.5"/><text x="${x}" y="${y+4}" text-anchor="middle" fill="${color}" font-size="12">${node.bank_ids.length>1?node.bank_ids.length+'B':esc(data.banks.find(b=>b.id===node.bank_ids[0])?.name.slice(-1)||'?')}</text><text x="${x}" y="${y+45}" text-anchor="middle" fill="#d6dfed" font-size="11">${esc(node.label)}</text><text x="${x}" y="${y+61}" text-anchor="middle" fill="#788a9f" font-size="9">${esc(membership)} · ${node.local_risk==null?'score unavailable':node.local_risk.toFixed(2)+' authored score'}</text></g>`;
   }
   svg.innerHTML = html + '</g>';
   $('zoom-reset').textContent = `${Math.round(zoom*100)}%`;
 }
 function renderCase(view,alert) {
-  $('case-title').textContent = alert?.title || (collaborative ? source==='fixture'?'Awaiting a connected case':'No multi-bank case detected' : 'Local-only perspective');
-  $('case-badge').textContent = alert ? 'Review' : 'Observe'; $('case-badge').className = `badge ${alert?'danger':'neutral'}`;
-  const node = view.nodeMap.get(selectedNode);
-  let html = `<div class="case-body"><p class="case-intro">${alert ? 'Related signals form a coordinated pattern across institutional boundaries. This is a case for investigation, not a confirmed fraud verdict.' : collaborative ? 'Inspect the visible relationships. A case requires supporting evidence; no case does not establish that all activity is legitimate.' : 'These are separate bank-visible relationship views. Local structural findings are reported in the institution cards.'}</p>`;
-  if (view.alerts.length > 1) html += `<label for="alert-select" class="case-section-title">SELECT CASE</label><select id="alert-select">${view.alerts.map(a=>`<option value="${esc(a.id)}" ${a.id===alert.id?'selected':''}>${esc(a.id)} · ${esc(a.title)}</option>`).join('')}</select>`;
-  html += `<div class="case-score"><span>${alert?'RELATIONSHIP EVIDENCE':'VISIBLE LOCAL FRAGMENTS'}</span><strong>${alert?alert.edge_ids.length:view.edges.length} <span>links</span></strong></div>`;
-  if (node) html += `<div class="selected-entity"><strong>${esc(node.label)}</strong> · ${esc(data.banks.find(b=>b.id===node.bank_id).name)}<code class="entity-token">${esc(node.id)}</code><p>Contributing memberships: ${node.bank_ids.map(id=>esc(data.banks.find(b=>b.id===id).name)).join(', ')}. These are signal memberships, not ownership.</p><br>Maximum incident transaction score: ${node.local_risk.toFixed(2)} <span class="muted">(${source==='fixture'?'fixture score':'backend score'}; uncalibrated score, not a fraud probability)</span></div>`;
-  const bank = data.banks.find(b=>b.id===selectedBank);
-  if (bank) html += `<div class="selected-entity"><strong>${esc(bank.name)} · local findings</strong>${bank.local_findings.length ? bank.local_findings.map(f=>`<p><strong>${esc(f.title)}</strong>${esc(f.detail)}</p>`).join('') : '<p>No local finding details supplied by the backend.</p>'}<small>Complete-scenario findings · not a replay timestamp</small></div>`;
-  html += `<div class="case-section-title">${alert?'WHY THIS WAS FLAGGED':'WHAT TO LOOK FOR'}</div>`;
-  const reasons = alert?.reasons || (source!=='fixture' ? [{title:'Snapshot analysis complete',detail:'The backend reported no multi-bank case in this view. Inspect institution findings and the permitted sharing boundary.'}] : [{title:'Institution-local links',detail:'Inspect each bank’s fragment, then enable collaborative analysis to connect the path.'},{title:'Wait for the final relationship',detail:'The complete synthetic cycle is revealed at event six.'}]);
-  html += reasons.map((r,i)=>`<div class="reason"><span class="reason-number">${String(i+1).padStart(2,'0')}</span><div><strong>${esc(r.title)}</strong><p>${esc(r.detail)}</p></div></div>`).join('');
-  html += `<div class="case-footnote">${source==='fixture'?'Pre-authored synthetic replay.':source==='snapshot'?'Saved computed synthetic output; not a live API result.':'API-computed synthetic output.'} Pseudonyms and graph relationships can remain sensitive.</div><button class="button subtle" data-view="${alert?'evidence':'privacy'}">${alert?'Inspect supporting evidence':'Inspect sharing boundary'} ↗</button></div>`;
-  $('case-content').innerHTML = html;
+  $('case-title').textContent=alert?.title||(collaborative?'No collaborative case':'Institution signal view');
+  $('case-badge').textContent=alert?'Review':'Observe';$('case-badge').className=`badge ${alert?'danger':'neutral'}`;
+  let html=`<div class="case-body"><p class="case-intro">${alert?'The selected result contains a suspicious structure for investigation. Highlighted relationships support this case; it is not a confirmed fraud verdict.':collaborative?'No case is visible in this result. A case appears only when its referenced evidence is available.':'This view shows relationships contributed by one institution. An endpoint can also appear in another institution’s signals; contribution does not establish account ownership.'}</p>`;
+  if(view.alerts.length>1)html+=`<label for="alert-select" class="case-section-title">SELECT CASE</label><select id="alert-select">${view.alerts.map(a=>`<option value="${esc(a.id)}" ${a.id===alert.id?'selected':''}>${esc(a.id)} · ${esc(a.title)}</option>`).join('')}</select>`;
+  html+=`<div class="case-score"><span>${alert?'SUPPORTING EVIDENCE':'VISIBLE CONTRIBUTED SIGNALS'}</span><strong>${alert?alert.edge_ids.length:view.edges.length} <span>links</span></strong></div>`;
+  const node=data.graph.nodes.find(n=>n.id===selectedNode);
+  if(node)html+=`<div class="selected-entity"><strong>${esc(node.label)}</strong><code class="entity-token">${esc(node.id)}</code><p>Appears in signals from: ${esc(membershipNames(node))}</p><p>Node score: ${node.local_risk==null?'unavailable (transaction scores are not node scores)':`${node.local_risk.toFixed(2)} · authored, uncalibrated score`}</p></div>`;
+  const bank=data.banks.find(b=>b.id===selectedBank);
+  if(bank)html+=`<div class="selected-entity"><strong>${esc(bank.name)} · contributed view</strong><p>${data.graph.edges.filter(e=>e.contributing_bank_id===bank.id).length} contributed signals in the complete snapshot. Transaction-risk flags: ${display(bank.local_alerts)}. Local suspicious structures: ${display(bank.local_ring_count)}.</p>${bank.local_findings.map(f=>`<p><strong>${esc(f.title)}</strong>${esc(f.detail)}</p>`).join('')}</div>`;
+  if(alert){html+=`<div class="case-section-title">${source==='fixture'?'AUTHORED EVIDENCE':'COMPUTED EVIDENCE'}</div>`;html+=alert.reasons.map((r,i)=>`<div class="reason"><span class="reason-number">${i+1}</span><div><strong>${esc(r.title)}</strong><p>${esc(r.detail)}</p></div></div>`).join('');
+    if(alert.timestamp_buckets?.length)html+=`<p class="case-intro">Case hour buckets: ${alert.timestamp_buckets.map(esc).join(', ')}. Hour buckets do not establish exact event timing or measured detection latency.</p>`;}
+  html+=`<div class="case-footnote">${source==='fixture'?'Pre-authored synthetic outcomes.':source==='computed-fixture'?'Saved output from actual graph code; synthetic inputs. No live API verified.':'Computed service response; synthetic provenance follows the scenario declaration.'} Pseudonyms remain linkable. Local-view controls are not access control.</div><button class="button subtle" data-view="${alert?'evidence':'privacy'}">${alert?'Inspect supporting evidence':'Inspect sharing boundary'} ↗</button></div>`;
+  $('case-content').innerHTML=html;
 }
 function renderEvidence(view,alert) {
   const refs=new Set(alert?.edge_ids||[]);
-  $('view-evidence').innerHTML='<h3>Relationship evidence</h3><p>Highlighted rows support the selected case. A contributor supplies a signal; it does not exclusively own both endpoints. Signal scores are uncalibrated, and hour buckets are not detection latency.</p>'+(view.edges.length?`<table class="evidence-table"><thead><tr><th scope="col">SIGNAL</th><th scope="col">PATH</th><th scope="col">CONTRIBUTOR</th><th scope="col">HOUR</th><th scope="col">SIGNAL SCORE</th></tr></thead><tbody>${view.edges.map(e=>`<tr class="${refs.has(e.id)?'supporting-evidence':''}"><td class="mono">${esc(e.id)}</td><td><button class="entity-button" data-node="${esc(e.source)}">${esc(view.nodeMap.get(e.source).label)}</button> → <button class="entity-button" data-node="${esc(e.target)}">${esc(view.nodeMap.get(e.target).label)}</button></td><td>${esc(data.banks.find(b=>b.id===e.institution_id)?.name||'Fixture relationship')}</td><td>${esc(e.time_bucket)}</td><td>${e.local_risk_score===undefined?'Unavailable':e.local_risk_score.toFixed(2)}</td></tr>`).join('')}</tbody></table>`:empty('No visible relationships',source==='fixture'?'Use Step to reveal authored signals.':'The analysis returned no relationships in this view.'));
+  $('view-evidence').innerHTML=`<h3>Relationship evidence</h3><p>Institution means signal contributor, not exclusive endpoint ownership. Highlighted rows support the selected case. Scores belong to signals and are uncalibrated. In live results they inform the versioned review policy; structural candidate extraction remains rule based. Hour buckets do not measure detection latency.</p>`+(view.edges.length?`<div class="table-scroll"><table class="evidence-table"><thead><tr><th scope="col">SIGNAL</th><th scope="col">PATH</th><th scope="col">CONTRIBUTOR</th><th scope="col">HOUR</th><th scope="col">AMOUNT BAND</th><th scope="col">SIGNAL SCORE</th></tr></thead><tbody>${view.edges.map(e=>`<tr class="${refs.has(e.id)?'supporting-evidence':''}"><td class="mono">${esc(e.id)}</td><td><button class="entity-button" data-node="${esc(e.source)}">${esc(view.nodeMap.get(e.source).label)}</button> → <button class="entity-button" data-node="${esc(e.target)}">${esc(view.nodeMap.get(e.target).label)}</button></td><td>${esc(data.banks.find(b=>b.id===e.contributing_bank_id)?.name||'Authored shared link')}</td><td class="mono">${esc(e.time_bucket||'Unavailable')}</td><td>${esc(e.amount_bucket||'Unavailable')}</td><td>${e.transaction_score==null?'Unavailable':e.transaction_score.toFixed(2)}</td></tr>`).join('')}</tbody></table></div>`:empty('No relationships in this view',data.replay_supported?'Use Step to reveal authored signals.':'This graph or institutional view is empty.'));
 }
 function renderPrivacy() {
-  const s = data.sharing_summary;
-  $('view-privacy').innerHTML = `<h3>A visible, limited sharing boundary</h3><p>${source==='fixture'?'The bundled fixture contains only pseudonymous graph display data. The browser does not contain simulated raw banking records.':'This panel describes the backend’s reported sharing policy; it does not independently audit bank-side traffic.'}</p><div class="privacy-columns"><div class="privacy-card local"><h3>01 / Retained at each bank</h3><ul>${s.retained_local.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div><div class="privacy-card"><h3>02 / Relationship fields</h3><ul>${s.shared_fields.map(f=>`<li><code>${esc(f)}</code></li>`).join('')}</ul></div></div><div class="boundary-note"><strong>${s.raw_rows_shared===null?'Raw-row traffic is not independently audited':`${s.raw_rows_shared} raw transaction rows shared`}</strong> · ${source==='fixture'?'fixture declaration, not a measured production result':'backend-reported value'}. Institution ID, pseudonymous entity IDs and local risk are also returned for display.</div><div class="case-section-title">SECURITY STATUS & LIMITS</div><p>Confidential execution: <strong>${s.execution_verified?'unverified (backend flag is not attestation)':'unverified'}</strong>. Pseudonymization is not anonymity. Relationships, risk bands and timing buckets can expose patterns. Authentication, authorization, key management, retention controls and deployment attestation belong to the integrated system.</p><p>The local-only toggle is a visual comparison. It is not an access-control boundary; this browser receives the whole analysis response. Replay history is an in-memory presentation trail, not a tamper-evident backend audit log.</p>`;
-  if(s.validation_scope)$('view-privacy').innerHTML+=`<p>Service validation scope: ${esc(s.validation_scope)}</p>`;
-  if(data.score_semantics)$('view-privacy').innerHTML+=`<p>Score semantics: ${esc(data.score_semantics)}</p>`;
+  const s=data.sharing_summary;
+  const retained=s.retained_local.length?s.retained_local:['Unavailable in this response. See the shared-signal contract for intended local retention.'];
+  $('view-privacy').innerHTML=`<h3>The permitted sharing boundary</h3><p>Graph tokens and institution IDs are visible to this browser. A contributing bank’s identity is not exclusive entity ownership. The local-view toggle is a visualization aid, not bank authentication.</p><div class="privacy-columns"><div class="privacy-card local"><h3>Retention declaration</h3><ul>${retained.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div><div class="privacy-card"><h3>Reported shared field categories</h3><ul>${s.shared_fields.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div></div><div class="boundary-note">Raw transaction rows shared: <strong>${display(s.raw_rows_shared)}</strong>. Raw transaction rows received: <strong>${display(s.raw_rows_received)}</strong>. These are distinct quantities. ${s.raw_fields_transmitted?`Reported raw fields transmitted: ${s.raw_fields_transmitted.length?s.raw_fields_transmitted.map(esc).join(', '):'none'}.`:''} These declarations are not a network audit.</div><p>${esc(s.privacy_description||'Pseudonymization is not anonymity. Graph relationships can expose sensitive patterns.')}</p><div class="case-section-title">DEPLOYMENT & PROVENANCE</div><p>LinuxONE deployment: unverified. Confidential execution: unverified. No attestation or documented deployment evidence is supplied. Backend timing, when supplied above, has its declared scope; no end-to-end event timing is established. Production authentication, authorization and key management are outside this frontend.</p>${data.provenance?`<p>Generated by ${esc(data.provenance.function||'unavailable')} at source commit <code>${esc(data.provenance.commit||'unavailable')}</code>. Input: ${esc(data.provenance.input||'unavailable')}. This is a saved computed result, not an API connection.</p>`:''}<p>Exact signal schema in the reviewed contract: signal_id, institution_id, source_entity_token, destination_entity_token, timestamp_bucket, amount_bucket, local_risk_score, channel. The corrected graph response supplies hour and amount buckets and per-signal scores. Node scores are not supplied or inferred. Secrets and raw customer rows are never required by the scenario-reference connection flow.</p>`;
+  if(s.service_verifies)$('view-privacy').innerHTML+=`<h3>Service-verified scope</h3><ul>${s.service_verifies.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h3>Not verified by the service</h3><ul>${s.service_cannot_verify.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><h3>Reported limitations</h3><ul>${s.limitations.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
 }
 function renderTrail(view) {
-  $('view-audit').innerHTML = `<h3>${source==='fixture'?'Synthetic replay trail':source==='snapshot'?'Saved computed relationships':'Backend snapshot relationships'}</h3><p>${source==='fixture'?'A deterministic presentation of the bundled fixture. These are scenario time buckets, not system logs.':'Relationships from the returned analysis. This panel is not a persisted or verified audit log.'}</p><div class="trail-row"><span>INIT</span><div><strong>${data.banks.length} institutions in the scenario</strong><p>${collaborative?'Collaborative relationship view enabled.':'Local view enabled; cross-bank relationships hidden.'}</p></div></div>${view.edges.map(e=>`<div class="trail-row"><span>${esc(e.time_bucket)}</span><div><strong>${esc(e.source)} → ${esc(e.target)}</strong><p>${esc(e.id)} · ${esc(e.kind)} · ${esc(e.risk_band)} risk band</p></div></div>`).join('')}${view.alerts.map(a=>`<div class="trail-row"><span>CASE</span><div><strong>${esc(a.id)} · ${esc(a.title)}</strong><p>${a.edge_ids.length} supporting links; ${a.reasons.length} reason codes. Investigator review required.</p></div></div>`).join('')}`;
+  $('view-audit').innerHTML = `<h3>${data.replay_supported?'Authored replay trail':'Complete computed snapshot'}</h3><p>${data.replay_supported?'Authored fixture time buckets, not measured detector timing.':'No event-by-event detection timing was supplied. This is not an audit log or latency measurement.'}</p><div class="trail-row"><span>INIT</span><div><strong>${data.banks.length} institutions in the scenario</strong><p>${collaborative?'Collaborative relationship view enabled.':'Local view enabled; cross-bank relationships hidden.'}</p></div></div>${view.edges.map(e=>`<div class="trail-row"><span>${esc(e.time_bucket||'N/A')}</span><div><strong>${esc(e.source)} → ${esc(e.target)}</strong><p>${esc(e.id)} · ${esc(e.kind)} · ${esc(e.transaction_score==null?'score unavailable':e.transaction_score.toFixed(2)+' uncalibrated signal score')}</p></div></div>`).join('')}${view.alerts.map(a=>`<div class="trail-row"><span>CASE</span><div><strong>${esc(a.id)} · ${esc(a.title)}</strong><p>${a.edge_ids.length} supporting links; ${a.reasons.length} reason codes. Investigator review required.</p></div></div>`).join('')}`;
 }
 
 document.addEventListener('click',event=>{
@@ -152,7 +150,7 @@ document.addEventListener('click',event=>{
   const entity=event.target.closest('[data-node]');
   if(entity && data) { selectedNode = selectedNode===entity.dataset.node?null:entity.dataset.node; render(); }
   const bank=event.target.closest('[data-bank]');
-  if(bank && data) {selectedBank=selectedBank===bank.dataset.bank?null:bank.dataset.bank; render();}
+  if(bank && data) {selectedBank=collaborative&&selectedBank===bank.dataset.bank?null:bank.dataset.bank; render();}
 });
 $('graph').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.closest('[data-node]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true})); const id=selectedNode; if(id) Array.from($('graph').querySelectorAll('[data-node]')).find(n=>n.dataset.node===id)?.focus();}});
 document.querySelector('.tabbar').addEventListener('keydown',e=>{
@@ -161,8 +159,8 @@ document.querySelector('.tabbar').addEventListener('keydown',e=>{
   i=e.key==='Home'?0:e.key==='End'?3:(i+(e.key==='ArrowRight'?1:3))%4;switchView(names[i],true);
 });
 $('graph-scope').onclick=()=>{caseOnly=!caseOnly;render();};
-$('local-mode').onclick=()=>{collaborative=false;render();}; $('collab-mode').onclick=()=>{collaborative=true;render();};
-$('reset-button').onclick=()=>{stop();step=0;selectedNode=selectedBank=null;render();notify('Scenario reset. Use Step or Play to begin.');};
+$('local-mode').onclick=()=>{collaborative=false;selectedBank ||= data?.banks[0]?.id||null;render();}; $('collab-mode').onclick=()=>{collaborative=true;render();};
+$('reset-button').onclick=()=>{stop();step=0;selectedNode=null;selectedBank=collaborative?null:data.banks[0]?.id||null;render();notify('Scenario reset. Use Step or Play to begin.');};
 $('step-button').onclick=()=>{stop();step=Math.min(step+1,maxStep(data));render();};
 $('play-button').onclick=()=>{
   if(timer){stop();render();return;}
@@ -173,31 +171,32 @@ for(const [id,delta] of [['zoom-in',.15],['zoom-out',-.15],['zoom-reset',0]])$(i
 $('case-content').addEventListener('change',e=>{if(e.target.id==='alert-select'){selectedAlert=e.target.value;render();}});
 $('export-button').onclick=()=>{
   if(!data)return;
-  const blob=new Blob([JSON.stringify(caseExport(data,step,collaborative,source),null,2)],{type:'application/json'});
+  const blob=new Blob([JSON.stringify(caseExport(data,step,collaborative,source,selectedBank),null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`fraudmesh-case-${collaborative?'collaborative':'local'}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notify('Case exported as JSON with source and scope labels.');
 };
-$('run-analysis').onclick=()=>{$('connection-form').requestSubmit();};
 $('settings-open').onclick=()=>{$('settings-dialog').showModal();};
 $('settings-close').onclick=()=>{connectionController?.abort();$('settings-dialog').close();};
 $('settings-dialog').addEventListener('cancel',()=>connectionController?.abort());
-$('mock-button').onclick=()=>{requestEpoch++;connectionController?.abort();$('connect-button').disabled=$('run-analysis').disabled=false;if(fixture){setData(structuredClone(fixture),'fixture');$('connection-status').textContent='';$('settings-dialog').close();notify('Restored the synthetic fixture.');}};
+$('mock-button').onclick=()=>{requestEpoch++;connectionController?.abort();$('connect-button').disabled=false;if(fixture){setData(structuredClone(fixture),'fixture');$('connection-status').textContent='';$('settings-dialog').close();notify('Restored the synthetic fixture.');}};
 $('connection-form').onsubmit=async e=>{
-  e.preventDefault();const epoch=++requestEpoch;connectionController?.abort();const controller=new AbortController();connectionController=controller;
-  $('connect-button').disabled=$('run-analysis').disabled=true;$('connection-form').setAttribute('aria-busy','true');stop();render();
+  e.preventDefault();const epoch=++requestEpoch;const button=$('connect-button');button.disabled=true;stop();render();
+  connectionController?.abort();const controller=new AbortController();connectionController=controller;
+  $('connection-form').setAttribute('aria-busy','true');
   try{
-    const next=await loadAnalysis($('api-url').value,$('scenario-select').value,{signal:controller.signal,onProgress:message=>{$('connection-status').textContent=message;}});
-    if(epoch!==requestEpoch||controller.signal.aborted)return;
-    setData(next,'api');$('settings-dialog').close();$('connection-status').textContent='';notify('Computed API snapshot loaded; replay disabled.');
-  }catch(error){if(epoch===requestEpoch&&!controller.signal.aborted){$('connection-status').textContent=`Connection failed: ${error.message} Previous data remains visible. No fallback was loaded.`;if(!$('settings-dialog').open)$('settings-dialog').showModal();}}
-  finally{if(epoch===requestEpoch){$('connect-button').disabled=$('run-analysis').disabled=false;$('connection-form').removeAttribute('aria-busy');}}
+    const next=await loadAnalysis($('api-url').value,{signal:controller.signal,scenarioName:liveScenarioName,onProgress:message=>{$('connection-status').textContent=message;}});
+    if(controller.signal.aborted||epoch!==requestEpoch)return;
+    setData(next,'api');$('settings-dialog').close();$('connection-status').textContent='';notify('API snapshot loaded. Replay is disabled.');
+  }catch(error){if(epoch===requestEpoch&&!controller.signal.aborted){$('connection-status').textContent=`Connection failed: ${error.message} Existing data is unchanged; no fallback was loaded.`;if(!$('settings-dialog').open)$('settings-dialog').showModal();}}
+  finally{if(epoch===requestEpoch){button.disabled=false;$('connection-form').removeAttribute('aria-busy');}}
 };
-$('load-snapshot').onclick=async()=>{
-  const epoch=++requestEpoch;connectionController?.abort();$('connect-button').disabled=$('run-analysis').disabled=false;
-  try{const response=await fetch(`./public/computed/${$('scenario-select').value}.json`);if(!response.ok)throw new Error(`HTTP ${response.status}`);const saved=await response.json();const next=validateAnalysis(saved.analysis);
-    if(epoch!==requestEpoch)return;
-    if(saved.provenance?.kind!=='saved-computed-synthetic'||!/^[0-9a-f]{40}$/.test(saved.provenance.backend_commit)||saved.provenance.scenario!==$('scenario-select').value||next.synthetic!==true)throw new Error('Saved example provenance is missing or mismatched.');
-    next.provenance=saved.provenance;setData(next,'snapshot');notify('Saved computed synthetic example loaded. No API request was made.');
-  }catch(error){if(epoch===requestEpoch)notify(`Saved example unavailable: ${error.message}. Existing data retained.`);}
+$('demo-source').onchange=async event=>{
+  const choice=event.target.value;if(choice.startsWith('api')){liveScenarioName=choice==='api'?'common':choice.slice(4);$('connection-form').requestSubmit();return;}
+  const epoch=++requestEpoch;connectionController?.abort();$('connect-button').disabled=false;
+  try{
+    if(choice.startsWith('saved-')){const name=choice.slice(6);const response=await fetch(`./public/computed/${name}.json`);if(!response.ok)throw new Error(`HTTP ${response.status}`);const saved=await response.json();if(epoch!==requestEpoch)return;if(saved.provenance?.kind!=='saved-computed-synthetic'||saved.provenance.scenario!==name||!/^[0-9a-f]{40}$/.test(saved.provenance.backend_commit))throw new Error('Invalid saved provenance.');const next=adaptGraphResponse(saved.analysis,saved);next.saved_provenance=saved.provenance;next.provenance={kind:saved.provenance.kind,commit:saved.provenance.backend_commit,function:saved.provenance.function,input:saved.provenance.scenario};setData(next,'saved-api');}
+    else if(choice==='authored'){if(!fixture)throw new Error('Authored fixture unavailable.');setData(structuredClone(fixture),'fixture');}
+    else{const response=await fetch(`./public/integration/${choice}.json`);if(!response.ok)throw new Error(`Fixture HTTP ${response.status}`);const envelope=await response.json();if(epoch!==requestEpoch)return;setData(adaptGraphResponse(envelope.analysis,envelope),'computed-fixture');}
+  }catch(error){notify(`Could not load the selected fixture: ${error.message}`);render();}
 };
 
 try {
@@ -209,11 +208,4 @@ try {
   $('connection-status').textContent='The bundled fixture could not load. You can still connect to a compatible API.';
 }
 
-// The unified Python server supplies the UI and API from the same origin.
-try {
- const health = await fetch('/health',{signal:AbortSignal.timeout(2000)});
- if(health.ok && (await health.json()).application==='FraudMesh'){
-  $('api-url').value=location.origin;
-  $('connection-form').requestSubmit();
- }
-} catch {}
+try {const response=await fetch('/health',{signal:AbortSignal.timeout(2000)});if(response.ok&&(await response.json()).application==='FraudMesh'){$('api-url').value=location.origin;$('connection-form').requestSubmit();}} catch {}

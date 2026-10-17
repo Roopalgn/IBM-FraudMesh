@@ -1,15 +1,68 @@
-# Frontend boundary for the authoritative API
+# Frontend adaptation and proposed endpoint agreement
 
-The repository-root `docs/data_contract.md` owns the API. This document describes frontend validation and display only; it does not introduce another response profile or alter backend schemas.
+## Authority and source
 
-`src/api.js` calls GET /health, GET /demo/scenario?name=common|ring|normal|local, then POST /analyze. Health must declare synthetic_only=true; scenario must declare synthetic=true. The POST contains exactly scenario_id and shared_signals from the scenario response. Allowed scenario references, signal fields, scalar formats and size limits follow the root contract. Browser-side validation rejects raw records/secrets and malformed approved fields before POST. It does not authenticate tokens, audit upstream traffic or replace backend validation.
+Person 1 has implemented this scenario-reference envelope in the team API. Root `docs/data_contract.md` is authoritative. The adapter accepts Person 3's corrected component response at `34822ed09e167a810abc29cdde5104b569e84b72`, plus live optional triage/review_queue fields. The component fixtures preserve the original graph behavior; live results add an explicit versioned review policy and audit receipt.
 
-Only HTTP(S) base URLs without credentials, query parameters or fragments are accepted. Credentials are omitted, redirects rejected, response size capped and requests timed out after 15 seconds. Closing settings or selecting a fallback aborts outstanding work. A request generation guard prevents stale responses replacing a newer choice. Invalid JSON, HTTP failure, contract failure and cancellation do not silently load fixtures.
+The single supported computed-response profile is **person3.graph.v2**. The earlier component shape is intentionally rejected. The authored fallback has its own explicit fixture validator and is never substituted for failed API responses.
 
-Responses still use schema_version 1.0, scenario_id, synthetic, banks, graph, collaborative_alerts and sharing_summary. The frontend preserves optional score_semantics, comparison, measurement.analysis_ms/scope and validation_scope. Missing optional fields remain unavailable. Comparison's unit must be structural pattern findings and its local count must agree with the bank summaries. Signal, local-structure, combined-structure and multi-bank-case counts remain separately labeled.
+## Proposed endpoint flow
 
-Alert node/edge IDs must exist, be unique within the case and include supporting endpoints. Selected-case evidence rows are highlighted. Nodes retain bank_ids. The existing deterministic bank_id is a colour key only; multi-institution graph glyphs and details show memberships explicitly. The approved node score is maximum incident transaction score; in local views it uses the selected institution's incident scores. Scores are displayed as decimals and labeled uncalibrated, never as verified fraud probabilities.
+1. `GET /health` returns a successful JSON object.
+2. `GET /demo/scenario` returns:
 
-API mode is a complete snapshot, not a measured replay. measurement.analysis_ms describes only backend validation/comparison/response construction and is shown with its supplied scope. No number is invented if absent. Raw-row traffic remains unaudited when null. A backend execution flag is not remote attestation.
+```json
+{
+  "response_profile": "person3.graph.v2",
+  "scenario_id": "three-bank-demo",
+  "synthetic": true,
+  "analysis_request": {"scenario_id": "three-bank-demo"}
+}
+```
 
-Saved computed examples use the exact same response validator. Their local file envelope adds provenance outside analysis: backend source commit, four source hashes, generator function, scenario and explicit unmeasured timing/deployment scope. It is an artifact wrapper, not a second API contract. Saved snapshots are only loaded by an explicit button, retain a distinct source badge and have replay disabled. Exports retain provenance and use replay_step=null for snapshots/API, while authored replay exports only current evidence.
+3. `POST /analyze` sends only `{"scenario_id":"three-bank-demo"}` and receives the unchanged component response: `component_metadata`, `bank_results`, `collaborative_alerts`, `graph`, `comparison`, `privacy`, `summary`.
+
+The backend resolves the scenario reference to permitted signals. The browser never requires raw customer rows, precise local records or tokenization secrets. Extra scenario-request fields are rejected before POST. The configurable base URL accepts HTTP(S) only, without credentials, query strings or fragments. Requests omit cookies, reject redirects and use 15-second timeouts. Closing settings cancels a pending request.
+
+CORS must explicitly allow the actual dashboard origin (development: `http://localhost:4173` or `http://127.0.0.1:4173`), GET/POST/OPTIONS and JSON Content-Type. Starting the static server proves nothing about API reachability. An HTTPS dashboard needs an HTTPS API.
+
+## Explicit mapping in src/graph-adapter.js
+
+| Component field | Display representation |
+| --- | --- |
+| `component_metadata.shared_signal_schema` | Must be `fraudmesh-shared-signal/v1`; scenario must declare synthetic_only |
+| `bank_results[].institution_id` | Canonical bank ID; casing is preserved, not guessed |
+| `signals_processed` | Validated against the number of contributed graph edges |
+| `local_structural_findings` | Validated local structures and count; separate from ML flags |
+| `graph.nodes[].id` | Same canonical HMAC token, with a short Entity NN display label |
+| `institution_ids` | Preserved memberships, checked against incident edge contributors; never exclusive ownership |
+| `graph.edges[].id / signal_id` | Required to match; preserved as evidence ID |
+| `institution_id` on edge | Contributing bank, used by the selected local view |
+| `timestamp_bucket / amount_bucket / local_risk_score / channel` | Permitted hour/value buckets, uncalibrated signal score and channel; no node-score aggregation |
+| `alert_id / supporting_signal_ids / linked_entities` | Case ID and validated existing edge/node references |
+| `evidence[]` objects | Escaped reason codes and supporting references; no raw object HTML |
+| `timestamp_buckets / time_window_minutes` | Coarse case timing, not measured detector latency |
+| `comparison.comparison_unit` | Must be structural pattern findings; local/combined counts and finding references are cross-checked |
+| `privacy.service_verifies / service_cannot_verify / limitations` | Display actual validation scope and limitations |
+| `summary.structural_findings` | Must agree with case count; signal/entity totals checked too |
+
+Missing ML flag counts, node scores, raw-row counts and attested execution status are unavailable/unverified. A bare execution_verified boolean is not sufficient deployment evidence. Per-signal scores are not calibrated fraud probabilities and are not fused into this structural detector.
+
+`src/model.js` derives local graphs by edge contributor, retaining all endpoint entities without duplicating shared tokens. Exports contain only current visible evidence; local findings have their own export field. Authored replay does not export future nodes, edges or cases. API and generated snapshots have no replay timestamps.
+
+Empty display graphs, multiple cases and missing optional information are supported. Invalid counts, memberships, references, scores or profiles fail visibly and retain existing data. Unknown payload properties are projected out, but this is not proof that upstream traffic contained no raw data. Authentication, authorization and bank-side policy remain backend responsibilities.
+
+## Generated fixtures
+
+Ring, unrelated-activity and single-bank-control JSON files were generated by unchanged pinned Python code with NetworkX 3.4.2. Each includes function, commit, source SHA-256 hashes, input description and explicit synthetic/live/deployment status. They prove frontend adaptation to actual computed component output, not a live API or LinuxONE deployment.
+
+
+## Recovered work aligned to the current primary endpoint
+
+The primary response remains `person3.graph.v2`, with only a scenario reference sent to POST /analyze. The legacy dashboard.v1 endpoint is not guessed or automatically used by this frontend. Latest main's structured evidence, institutional memberships and versioned ML-informed review policy are preserved.
+
+The adapter retains optional measurement.analysis_ms (finite, nonnegative) and a nonempty scope. The UI displays both; it does not fabricate timing for cached output. Structural extraction and the subsequent review policy are distinct: keep main's triage output intact.
+
+Additional local artifacts under public/computed wrap the exact primary response with provenance: generator function, backend commit, source SHA-256 hashes, scenario, unmeasured timing and unverified deployment. This wrapper is not a second HTTP contract. The source picker explicitly separates Saved API results from live API, original component fixtures and authored replay. Exports retain the complete saved artifact provenance and replay_step=null.
+
+The UI's request generation guard covers both network and fixture loads. Aborted/stale requests cannot replace newer data or reopen a closed settings dialog. Tests verify exact equality of saved output to current backend computation and source-file hashes, so stale artifacts fail checks instead of silently passing.

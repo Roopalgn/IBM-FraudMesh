@@ -87,7 +87,7 @@ def _find_structural_candidates(graph: nx.MultiDiGraph) -> list[StructuralCandid
             raise AnalysisCapacityError("Graph exceeds the demo limit of 100 structural findings")
 
     for node in sorted(simple.nodes):
-        targets = tuple(sorted(simple.successors(node)))
+        targets = tuple(sorted(set(simple.successors(node)) - {node}))
         if len(targets) >= MIN_DISTINCT_COUNTERPARTIES:
             candidates.append(
                 StructuralCandidate(
@@ -96,7 +96,7 @@ def _find_structural_candidates(graph: nx.MultiDiGraph) -> list[StructuralCandid
                     tuple((node, target) for target in targets),
                 )
             )
-        sources = tuple(sorted(simple.predecessors(node)))
+        sources = tuple(sorted(set(simple.predecessors(node)) - {node}))
         if len(sources) >= MIN_DISTINCT_COUNTERPARTIES:
             candidates.append(
                 StructuralCandidate(
@@ -105,6 +105,10 @@ def _find_structural_candidates(graph: nx.MultiDiGraph) -> list[StructuralCandid
                     tuple((source, node) for source in sources),
                 )
             )
+        if len(sources) >= MIN_DISTINCT_COUNTERPARTIES and len(targets) >= MIN_DISTINCT_COUNTERPARTIES:
+            pairs = tuple(sorted({*((source, node) for source in sources),
+                                  *((node, target) for target in targets)}))
+            candidates.append(StructuralCandidate("flow_hub", tuple(sorted({node, *sources, *targets})), pairs))
     if len(candidates) > MAX_STRUCTURAL_FINDINGS:
         raise AnalysisCapacityError("Graph exceeds the demo limit of 100 structural findings")
     return candidates

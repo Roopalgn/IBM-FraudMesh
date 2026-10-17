@@ -11,6 +11,8 @@ mkdir -p output
 python -B -m unittest discover -s tests -v 2>&1 | tee output/test-results.txt
 python -B scripts/train_ml_baseline.py > output/ml-evaluation.json
 python -B scripts/verify_runtime.py
+python -B scripts/evaluate_collaboration.py
+python -B scripts/benchmark_runtime.py --require-s390x
 echo "Validation finished. Start the application with:"
 echo "source .venv/bin/activate"
 echo "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"

@@ -59,3 +59,19 @@ Expected architecture is s390x. The report always states confidential_execution_
 7. Explain the HMAC/coarse-signal boundary and its linkability limitations.
 
 These are scenario outcomes, not a general production improvement benchmark. Record a backup video and finish the event submission/pitch separately.
+
+## Judge evidence after starting the service
+
+With the server running in one session, use a second SSH session:
+
+```bash
+cd ~/fraudmesh-integrated
+source .venv/bin/activate
+python scripts/evaluate_collaboration.py
+python scripts/benchmark_runtime.py --require-s390x --http-url http://127.0.0.1:8000
+python -c "from pathlib import Path; from fraudmesh.audit import verify_journal; print(verify_journal(Path('output/analysis-audit.sqlite3')))"
+```
+
+Keep output/platform-benchmark.json, collaboration-evaluation.json and the original runtime report with the deployed commit. The HTTP benchmark performs 41 real synthetic analyses (one warmup and 20 requests at each of one/four concurrent clients), including journal writes. More concurrency need not be faster. Report the measured result and scope, not an assumed mainframe advantage.
+
+The check script requires actual s390x for its platform benchmark. Reports from Windows or GitHub's AMD64 runner are development evidence only. The new default UI sends a scenario reference and the API computes all bank preparation and graph work on the server. Review-policy scores are hand-weighted over a trained local model; all raw structural findings remain inspectable.

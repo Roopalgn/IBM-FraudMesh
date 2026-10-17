@@ -1,286 +1,56 @@
 {
+  "profile": "person3.graph.v2",
+  "scenario_id": "synthetic-ring",
+  "synthetic": true,
   "provenance": {
     "kind": "saved-computed-synthetic",
-    "backend_commit": "c1ff359e493471552ab2c32cdbe2647216f2e2d0",
+    "backend_commit": "f7d1921b788ce76e13b0fe67b57f7f53807a76db",
     "source_sha256": {
       "fraudmesh/demo.py": "8ba46ac1eeeadb03ddc7b9486bebcafd56780c070d348fe12037f2f1550203d2",
-      "fraudmesh/service.py": "b18fe70297a198e4cc25122ef37c03784a65e251b4ebd15064ad85ec2dd3b426",
-      "fraudmesh/graph_engine.py": "d3bbed7bf420d48ff6c17758a65da88136e5ba88ad1e168e80f7ce8952bf5d4d",
-      "fraudmesh/privacy.py": "d49811e2077474a5fa4e659812a32a015c20ec0f5cb51d76f3ddeab2dd3d1b5b"
+      "fraudmesh/analysis.py": "510c5bbe2d2ab9caf4eabb74a9d277039a0e8a3904098812709f4b193223d669",
+      "fraudmesh/graph_engine.py": "de2aa06b5b158b01aed8f6b7b46233d1ca6cfd27bfca0bc8a80133c560811c80",
+      "fraudmesh/triage.py": "62de82cd4c146b3eeccf518b5711436936c8e5a6795e2debc2093f4fb6d4691b"
     },
-    "function": "fraudmesh.service.analyze_for_dashboard",
+    "function": "fraudmesh.analysis.analyze_signals",
     "scenario": "ring",
     "timing": "not measured; saved snapshot",
     "deployment": "not established by this artifact"
   },
   "analysis": {
-    "schema_version": "1.0",
-    "scenario_id": "synthetic-ring",
-    "synthetic": true,
-    "banks": [
+    "component_metadata": {
+      "shared_signal_schema": "fraudmesh-shared-signal/v1",
+      "validation": "restricted schema and scalar representations validated",
+      "scenario": "synthetic_only"
+    },
+    "bank_results": [
       {
-        "id": "bank_a",
-        "name": "Bank A",
-        "entity_count": 5,
-        "local_alerts": 0,
-        "local_ring_count": 0,
-        "local_findings": [
-          {
-            "title": "Local graph analysis",
-            "detail": "0 structural pattern findings from this bank's own signals; 0 high transaction risk scores."
-          }
-        ]
+        "institution_id": "bank_a",
+        "signals_processed": 3,
+        "local_structural_findings": []
       },
       {
-        "id": "bank_b",
-        "name": "Bank B",
-        "entity_count": 5,
-        "local_alerts": 0,
-        "local_ring_count": 0,
-        "local_findings": [
-          {
-            "title": "Local graph analysis",
-            "detail": "0 structural pattern findings from this bank's own signals; 0 high transaction risk scores."
-          }
-        ]
+        "institution_id": "bank_b",
+        "signals_processed": 3,
+        "local_structural_findings": []
       },
       {
-        "id": "bank_c",
-        "name": "Bank C",
-        "entity_count": 5,
-        "local_alerts": 0,
-        "local_ring_count": 0,
-        "local_findings": [
-          {
-            "title": "Local graph analysis",
-            "detail": "0 structural pattern findings from this bank's own signals; 0 high transaction risk scores."
-          }
-        ]
+        "institution_id": "bank_c",
+        "signals_processed": 3,
+        "local_structural_findings": []
       }
     ],
-    "graph": {
-      "nodes": [
-        {
-          "id": "fm1:020952bb1a3147a13e7c5d34fdfe7e836644897a31a8c477f9aa82a7be2ececd",
-          "label": "Entity 01",
-          "bank_id": "bank_b",
-          "bank_ids": [
-            "bank_b"
-          ],
-          "local_risk": 0.16578858
-        },
-        {
-          "id": "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
-          "label": "Entity 02",
-          "bank_id": "bank_b",
-          "bank_ids": [
-            "bank_b",
-            "bank_c"
-          ],
-          "local_risk": 0.30309526
-        },
-        {
-          "id": "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6",
-          "label": "Entity 03",
-          "bank_id": "bank_b",
-          "bank_ids": [
-            "bank_b"
-          ],
-          "local_risk": 0.30000343
-        },
-        {
-          "id": "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
-          "label": "Entity 04",
-          "bank_id": "bank_a",
-          "bank_ids": [
-            "bank_a",
-            "bank_c"
-          ],
-          "local_risk": 0.30609573
-        },
-        {
-          "id": "fm1:53d9e19ea915b5db15b98d6688d1234b87f329ea5a0228b8664bda7474453c24",
-          "label": "Entity 05",
-          "bank_id": "bank_c",
-          "bank_ids": [
-            "bank_c"
-          ],
-          "local_risk": 0.16578858
-        },
-        {
-          "id": "fm1:6d073b396f108210391f4fd965247993c56dd1743c605cb049853ed9d4867b97",
-          "label": "Entity 06",
-          "bank_id": "bank_a",
-          "bank_ids": [
-            "bank_a"
-          ],
-          "local_risk": 0.16578858
-        },
-        {
-          "id": "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
-          "label": "Entity 07",
-          "bank_id": "bank_a",
-          "bank_ids": [
-            "bank_a",
-            "bank_b"
-          ],
-          "local_risk": 0.29681421
-        },
-        {
-          "id": "fm1:7b450d413b0e673a596d5a7999a9e97f74d1ced760470c8347e829a502bb1158",
-          "label": "Entity 08",
-          "bank_id": "bank_b",
-          "bank_ids": [
-            "bank_b"
-          ],
-          "local_risk": 0.16578858
-        },
-        {
-          "id": "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
-          "label": "Entity 09",
-          "bank_id": "bank_a",
-          "bank_ids": [
-            "bank_a"
-          ],
-          "local_risk": 0.29352095
-        },
-        {
-          "id": "fm1:b0bc777e5bfc559c93da77d547ef0cc14c56fc50b2901630bc9e1119fe377e96",
-          "label": "Entity 10",
-          "bank_id": "bank_c",
-          "bank_ids": [
-            "bank_c"
-          ],
-          "local_risk": 0.16578858
-        },
-        {
-          "id": "fm1:c711bbbfffe524c55cbe1f752581d6f6bf9bb619126f39df74063bb7dd09acdc",
-          "label": "Entity 11",
-          "bank_id": "bank_a",
-          "bank_ids": [
-            "bank_a"
-          ],
-          "local_risk": 0.16578858
-        },
-        {
-          "id": "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
-          "label": "Entity 12",
-          "bank_id": "bank_c",
-          "bank_ids": [
-            "bank_c"
-          ],
-          "local_risk": 0.30609573
-        }
-      ],
-      "edges": [
-        {
-          "id": "sig-08115fa0d46143a42f79c92c",
-          "source": "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6",
-          "target": "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
-          "institution_id": "bank_b",
-          "local_risk_score": 0.30000343,
-          "kind": "permitted_transfer",
-          "step": 1,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "medium"
-        },
-        {
-          "id": "sig-166ba7b9e295c14025b0bea8",
-          "source": "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
-          "target": "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6",
-          "institution_id": "bank_b",
-          "local_risk_score": 0.29681421,
-          "kind": "permitted_transfer",
-          "step": 2,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "medium"
-        },
-        {
-          "id": "sig-2f2a0ed48d00fb6df1544057",
-          "source": "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
-          "target": "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
-          "institution_id": "bank_c",
-          "local_risk_score": 0.30609573,
-          "kind": "permitted_transfer",
-          "step": 3,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "medium"
-        },
-        {
-          "id": "sig-3ce234cf0596bc884263b998",
-          "source": "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
-          "target": "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
-          "institution_id": "bank_a",
-          "local_risk_score": 0.29011624,
-          "kind": "permitted_transfer",
-          "step": 4,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "medium"
-        },
-        {
-          "id": "sig-69150eb67d5ab669b0254643",
-          "source": "fm1:7b450d413b0e673a596d5a7999a9e97f74d1ced760470c8347e829a502bb1158",
-          "target": "fm1:020952bb1a3147a13e7c5d34fdfe7e836644897a31a8c477f9aa82a7be2ececd",
-          "institution_id": "bank_b",
-          "local_risk_score": 0.16578858,
-          "kind": "permitted_transfer",
-          "step": 5,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "low"
-        },
-        {
-          "id": "sig-76f3456fa20f1870b836c271",
-          "source": "fm1:53d9e19ea915b5db15b98d6688d1234b87f329ea5a0228b8664bda7474453c24",
-          "target": "fm1:b0bc777e5bfc559c93da77d547ef0cc14c56fc50b2901630bc9e1119fe377e96",
-          "institution_id": "bank_c",
-          "local_risk_score": 0.16578858,
-          "kind": "permitted_transfer",
-          "step": 6,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "low"
-        },
-        {
-          "id": "sig-b205f2e396cfaa46eb6baebc",
-          "source": "fm1:6d073b396f108210391f4fd965247993c56dd1743c605cb049853ed9d4867b97",
-          "target": "fm1:c711bbbfffe524c55cbe1f752581d6f6bf9bb619126f39df74063bb7dd09acdc",
-          "institution_id": "bank_a",
-          "local_risk_score": 0.16578858,
-          "kind": "permitted_transfer",
-          "step": 7,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "low"
-        },
-        {
-          "id": "sig-e137a9282d3c4de3c2356381",
-          "source": "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
-          "target": "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
-          "institution_id": "bank_c",
-          "local_risk_score": 0.30309526,
-          "kind": "permitted_transfer",
-          "step": 8,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "medium"
-        },
-        {
-          "id": "sig-f66bf635974c34c8b00e9557",
-          "source": "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
-          "target": "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
-          "institution_id": "bank_a",
-          "local_risk_score": 0.29352095,
-          "kind": "permitted_transfer",
-          "step": 9,
-          "time_bucket": "2026-10-17T10:00Z",
-          "risk_band": "medium"
-        }
-      ]
-    },
     "collaborative_alerts": [
       {
-        "id": "FM-RING-a60da814b236",
-        "title": "Suspicious multi-bank cycle",
-        "severity": "high",
-        "detected_at_step": 9,
-        "node_ids": [
+        "alert_id": "FM-RING-a60da814b236",
+        "risk_level": "high",
+        "structural_pattern": "cycle",
+        "cross_institution": true,
+        "institutions_involved": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "linked_entities": [
           "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
           "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
           "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
@@ -288,7 +58,56 @@
           "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
           "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6"
         ],
-        "edge_ids": [
+        "evidence": [
+          {
+            "code": "cycle",
+            "supporting_signal_ids": [
+              "sig-08115fa0d46143a42f79c92c",
+              "sig-166ba7b9e295c14025b0bea8",
+              "sig-2f2a0ed48d00fb6df1544057",
+              "sig-3ce234cf0596bc884263b998",
+              "sig-e137a9282d3c4de3c2356381",
+              "sig-f66bf635974c34c8b00e9557"
+            ],
+            "linked_entities": [
+              "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
+              "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
+              "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
+              "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
+              "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
+              "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6"
+            ]
+          },
+          {
+            "code": "cross_institution_cycle",
+            "supporting_signal_ids": [
+              "sig-08115fa0d46143a42f79c92c",
+              "sig-166ba7b9e295c14025b0bea8",
+              "sig-2f2a0ed48d00fb6df1544057",
+              "sig-3ce234cf0596bc884263b998",
+              "sig-e137a9282d3c4de3c2356381",
+              "sig-f66bf635974c34c8b00e9557"
+            ],
+            "institutions": [
+              "bank_a",
+              "bank_b",
+              "bank_c"
+            ]
+          },
+          {
+            "code": "rapid_propagation",
+            "elapsed_minutes": 0,
+            "resolution": "UTC hour buckets"
+          },
+          {
+            "code": "ml_informed_priority",
+            "priority_score": 0.75439601,
+            "review_recommended": true,
+            "mean_local_model_score": 0.2982743033333333,
+            "policy_version": "ml-graph-triage/v1"
+          }
+        ],
+        "supporting_signal_ids": [
           "sig-08115fa0d46143a42f79c92c",
           "sig-166ba7b9e295c14025b0bea8",
           "sig-2f2a0ed48d00fb6df1544057",
@@ -296,25 +115,208 @@
           "sig-e137a9282d3c4de3c2356381",
           "sig-f66bf635974c34c8b00e9557"
         ],
-        "reasons": [
-          {
-            "code": "cycle",
-            "title": "Directed cycle",
-            "detail": "The supporting permitted transfers form a closed directed path."
+        "timestamp_buckets": [
+          "2026-10-17T10:00Z"
+        ],
+        "time_window_minutes": 0,
+        "max_local_risk_score": 0.30609573,
+        "edge_count": 6,
+        "triage": {
+          "policy_version": "ml-graph-triage/v1",
+          "priority_score": 0.75439601,
+          "review_recommended": true,
+          "threshold": 0.75,
+          "features": {
+            "structure_strength": 1.0,
+            "mean_local_model_score": 0.2982743033333333,
+            "nearby_hour_buckets": 1.0,
+            "amount_band_consistency": 1.0
           },
-          {
-            "code": "cross_institution_cycle",
-            "title": "Cross-bank cycle",
-            "detail": "A detected directed cycle includes signals contributed by multiple banks."
-          },
-          {
-            "code": "rapid_propagation",
-            "title": "Nearby time buckets",
-            "detail": "Supporting UTC hour buckets span at most two hours; exact transfer timing remains local."
-          }
-        ]
+          "score_meaning": "Transparent review priority, not a fraud probability"
+        },
+        "structural_risk_level": "high"
       }
     ],
+    "graph": {
+      "nodes": [
+        {
+          "id": "fm1:020952bb1a3147a13e7c5d34fdfe7e836644897a31a8c477f9aa82a7be2ececd",
+          "institution_ids": [
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
+          "institution_ids": [
+            "bank_b",
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6",
+          "institution_ids": [
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
+          "institution_ids": [
+            "bank_a",
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:53d9e19ea915b5db15b98d6688d1234b87f329ea5a0228b8664bda7474453c24",
+          "institution_ids": [
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:6d073b396f108210391f4fd965247993c56dd1743c605cb049853ed9d4867b97",
+          "institution_ids": [
+            "bank_a"
+          ]
+        },
+        {
+          "id": "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
+          "institution_ids": [
+            "bank_a",
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:7b450d413b0e673a596d5a7999a9e97f74d1ced760470c8347e829a502bb1158",
+          "institution_ids": [
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
+          "institution_ids": [
+            "bank_a"
+          ]
+        },
+        {
+          "id": "fm1:b0bc777e5bfc559c93da77d547ef0cc14c56fc50b2901630bc9e1119fe377e96",
+          "institution_ids": [
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:c711bbbfffe524c55cbe1f752581d6f6bf9bb619126f39df74063bb7dd09acdc",
+          "institution_ids": [
+            "bank_a"
+          ]
+        },
+        {
+          "id": "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
+          "institution_ids": [
+            "bank_c"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": "sig-08115fa0d46143a42f79c92c",
+          "signal_id": "sig-08115fa0d46143a42f79c92c",
+          "source": "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6",
+          "target": "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
+          "institution_id": "bank_b",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.30000343,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-166ba7b9e295c14025b0bea8",
+          "signal_id": "sig-166ba7b9e295c14025b0bea8",
+          "source": "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
+          "target": "fm1:0568484643619c4a11060caccdd971edf0d2ba3efee7d68b73934c30292413a6",
+          "institution_id": "bank_b",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.29681421,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-2f2a0ed48d00fb6df1544057",
+          "signal_id": "sig-2f2a0ed48d00fb6df1544057",
+          "source": "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
+          "target": "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
+          "institution_id": "bank_c",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.30609573,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-3ce234cf0596bc884263b998",
+          "signal_id": "sig-3ce234cf0596bc884263b998",
+          "source": "fm1:3f49b892b9414bf98258f3025818f48fe2c429a676dc1e10c4b9f0b6bfd99ca9",
+          "target": "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.29011624,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-69150eb67d5ab669b0254643",
+          "signal_id": "sig-69150eb67d5ab669b0254643",
+          "source": "fm1:7b450d413b0e673a596d5a7999a9e97f74d1ced760470c8347e829a502bb1158",
+          "target": "fm1:020952bb1a3147a13e7c5d34fdfe7e836644897a31a8c477f9aa82a7be2ececd",
+          "institution_id": "bank_b",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.16578858,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-76f3456fa20f1870b836c271",
+          "signal_id": "sig-76f3456fa20f1870b836c271",
+          "source": "fm1:53d9e19ea915b5db15b98d6688d1234b87f329ea5a0228b8664bda7474453c24",
+          "target": "fm1:b0bc777e5bfc559c93da77d547ef0cc14c56fc50b2901630bc9e1119fe377e96",
+          "institution_id": "bank_c",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.16578858,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-b205f2e396cfaa46eb6baebc",
+          "signal_id": "sig-b205f2e396cfaa46eb6baebc",
+          "source": "fm1:6d073b396f108210391f4fd965247993c56dd1743c605cb049853ed9d4867b97",
+          "target": "fm1:c711bbbfffe524c55cbe1f752581d6f6bf9bb619126f39df74063bb7dd09acdc",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.16578858,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-e137a9282d3c4de3c2356381",
+          "signal_id": "sig-e137a9282d3c4de3c2356381",
+          "source": "fm1:039e4187224f720886bb2b2c4d27d7832a1d0f6b8bcbf483e16d805641c90570",
+          "target": "fm1:d1a579ff1dc51c7a625ecd7da3696b7c816f96b030ae206bb98a7cd2fd9fb92e",
+          "institution_id": "bank_c",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.30309526,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-f66bf635974c34c8b00e9557",
+          "signal_id": "sig-f66bf635974c34c8b00e9557",
+          "source": "fm1:a3918a6a244737cfeebcf306b25de119e822c2c0f15415f4023fbcbf9af2a938",
+          "target": "fm1:74f1ab3c4ccf1322452ca57bea2e2ece1a1f269ffed620859daa24219b2f10f9",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.29352095,
+          "channel": "transfer"
+        }
+      ]
+    },
     "comparison": {
       "comparison_unit": "structural pattern findings",
       "local_only": {
@@ -398,6 +400,13 @@
                 "code": "rapid_propagation",
                 "elapsed_minutes": 0,
                 "resolution": "UTC hour buckets"
+              },
+              {
+                "code": "ml_informed_priority",
+                "priority_score": 0.75439601,
+                "review_recommended": true,
+                "mean_local_model_score": 0.2982743033333333,
+                "policy_version": "ml-graph-triage/v1"
               }
             ],
             "supporting_signal_ids": [
@@ -413,39 +422,58 @@
             ],
             "time_window_minutes": 0,
             "max_local_risk_score": 0.30609573,
-            "edge_count": 6
+            "edge_count": 6,
+            "triage": {
+              "policy_version": "ml-graph-triage/v1",
+              "priority_score": 0.75439601,
+              "review_recommended": true,
+              "threshold": 0.75,
+              "features": {
+                "structure_strength": 1.0,
+                "mean_local_model_score": 0.2982743033333333,
+                "nearby_hour_buckets": 1.0,
+                "amount_band_consistency": 1.0
+              },
+              "score_meaning": "Transparent review priority, not a fraud probability"
+            },
+            "structural_risk_level": "high"
           }
         ]
       },
       "interpretation": "Controlled synthetic comparison only. Each bank sees its own permitted subgraph; the combined view can reconstruct patterns whose supporting edges are split across banks."
     },
-    "sharing_summary": {
-      "raw_rows_shared": null,
-      "shared_fields": [
-        "amount_bucket",
-        "channel",
-        "destination_entity_token",
-        "institution_id",
-        "local_risk_score",
-        "signal_id",
-        "source_entity_token",
-        "timestamp_bucket"
+    "privacy": {
+      "service_verifies": [
+        "the request matches the restricted shared-signal schema",
+        "approved scalar representations are used for tokens, buckets, scores, and channels",
+        "the intended graph interface accepts shared signals rather than raw ledger rows"
       ],
-      "retained_local": [
-        "Raw entity and transaction references",
-        "Exact amounts and timestamps",
-        "Evaluation labels"
+      "service_cannot_verify": [
+        "the complete upstream behavior of a submitting bank",
+        "the authenticity or authorization of a syntactically valid token",
+        "the absence of all inference risk from shared relationships and timing"
       ],
-      "execution_verified": false,
-      "validation_scope": "Accepted signal schema and value formats only; not a network audit or sender attestation."
+      "limitations": [
+        "HMAC pseudonyms remain linkable",
+        "shared-key custody and rotation are outside this prototype",
+        "three banks are simulated rather than organizationally isolated",
+        "Secure Execution, secure aggregation, differential privacy, and remote attestation are not established"
+      ]
     },
-    "score_semantics": "Node risk is the maximum incident transaction ML score, not an entity fraud probability.",
     "summary": {
       "signals_processed": 9,
       "pseudonymous_entities": 12,
       "structural_findings": 1,
       "local_risk_score_usage": "displayed as evidence only; not fused into detection or severity",
       "schema_validation": "restricted shared-signal schema accepted"
+    },
+    "review_queue": {
+      "policy_version": "ml-graph-triage/v1",
+      "threshold": 0.75,
+      "local_recommended": 0,
+      "combined_recommended": 1,
+      "cross_bank_recommended": 1,
+      "note": "All structural candidates remain visible. Prioritization does not establish fraud."
     }
   }
 }

@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from fraudmesh.demo import demo_request
 from fraudmesh.service import analyze_for_dashboard
+from fraudmesh.analysis import analyze_signals
 
 
 def main():
@@ -17,9 +18,11 @@ def main():
         start = perf_counter()
         request = demo_request(name)
         result = analyze_for_dashboard(request["shared_signals"], request["scenario_id"])
+        component = analyze_signals(request["shared_signals"])
         results.append({"scenario": name, "signals": len(request["shared_signals"]),
                         "local_structural_findings": result["comparison"]["local_only"]["finding_count"],
                         "multi_bank_cases": len(result["collaborative_alerts"]),
+                        "review_recommended": component["review_queue"]["combined_recommended"],
                         "bank_preparation_and_analysis_ms": round((perf_counter()-start)*1000, 3)})
     report = {"architecture": platform.machine(), "python": platform.python_version(),
               "system": platform.system(), "synthetic": True,

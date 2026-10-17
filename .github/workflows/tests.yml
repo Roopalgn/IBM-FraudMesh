@@ -16,3 +16,12 @@ jobs:
       - run: python -B -m unittest discover -s tests -v
       - run: node --test frontend/tests/*.test.mjs
       - run: python -B scripts/verify_runtime.py
+      - run: python -B scripts/evaluate_collaboration.py
+      - run: python -B scripts/benchmark_runtime.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: measured-synthetic-evidence
+          path: |
+            output/runtime_report.json
+            output/collaboration-evaluation.json
+            output/platform-benchmark.json
