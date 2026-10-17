@@ -6,8 +6,14 @@ No graph detector, API, dashboard or confidential execution is implemented here.
 
 ## Inspected context and ownership
 
-The initial repository contained a one-line README. The shared architecture and
-data-contract documents remain absent in fetched remote trees. This version
+For the common 21-event ledger, replay adapter, explicit Person 3 transformer
+mapping and executed integration checks, see [ML_INTEGRATION.md](ML_INTEGRATION.md).
+Generate it with `python -B -S scripts/generate_ml_demo.py --output-dir /tmp/fraudmesh-common-demo`.
+
+The initial repository contained a one-line README. At the v2 implementation
+checkpoint shared architecture/data-contract documents were absent. Person 3's
+current branch now supplies a shared-signal contract; ML-specific mapping is
+documented in ML_INTEGRATION.md without changing that authoritative contract. This version
 implements the provisional raw-input/four-field-output contract supplied directly
 by the team lead. It supersedes the earlier feature-enriched v1 interface.
 No teammates' API, privacy, graph, dashboard or root README files were changed.
@@ -173,7 +179,8 @@ feature unavailable in the supplied contract and must not be quoted for v2.
 
 ## Audit, compatibility and remaining limitations
 
-14 executed tests pass in a fresh **Python 3.12.2 Windows x86-64 venv without pip**,
+24 executed tests (14 core scoring plus 10 integration tests) pass in a fresh
+**Python 3.12.2 Windows x86-64 venv without pip**,
 with site-packages disabled. Tests cover the supplied example/exact output shape,
 empty and malformed batches, all required fields, label/feature injection,
 normal/suspicious examples, order/determinism/no mutation, timezone/window
