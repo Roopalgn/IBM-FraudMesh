@@ -81,11 +81,12 @@ export function adaptGraphResponse(raw,meta){
   if(count(raw.comparison.local_only?.finding_count,'local finding_count')!==banks.reduce((n,b)=>n+b.local_ring_count,0)||count(raw.comparison.collaborative?.finding_count,'combined finding_count')!==alerts.length)fail('comparison counts disagree with findings.');
   if(!same(list(raw.comparison.collaborative.findings,'combined findings').map(a=>a.alert_id),alerts.map(a=>a.id)))fail('combined comparison references disagree.');
   const privacy=raw.privacy;if(!privacy)fail('privacy declarations required.');
+  const measurement=raw.measurement==null?null:{analysis_ms:typeof raw.measurement.analysis_ms==='number'&&Number.isFinite(raw.measurement.analysis_ms)&&raw.measurement.analysis_ms>=0?raw.measurement.analysis_ms:fail('invalid analysis measurement.'),scope:text(raw.measurement.scope,'measurement.scope')};
   return{schema_version:'display-2',profile:GRAPH_PROFILE,scenario_id:scenarioId,synthetic:meta.synthetic,
     provenance:meta.provenance?Object.fromEntries(['kind','repository','commit','function','networkx_version','input','local_comparison','live_api_verified','linuxone_verified'].filter(k=>Object.hasOwn(meta.provenance,k)).map(k=>[k,meta.provenance[k]])):null,
     review_queue:raw.review_queue?{combined_recommended:count(raw.review_queue.combined_recommended,'combined_recommended'),local_recommended:count(raw.review_queue.local_recommended,'local_recommended'),cross_bank_recommended:count(raw.review_queue.cross_bank_recommended,'cross_bank_recommended')}:null,
     replay_supported:false,banks,graph:{nodes,edges},collaborative_alerts:alerts,comparison:{local_valid:true,note:'Controlled structural findings from the same rules in local and combined views. Transaction-risk flags are separate and unavailable here; these counts are not an accuracy benchmark.'},
     sharing_summary:{raw_rows_shared:null,raw_rows_received:null,shared_fields:sharedFields,retained_local:[],execution_verified:false,
       service_verifies:strings(privacy.service_verifies,'service_verifies'),service_cannot_verify:strings(privacy.service_cannot_verify,'service_cannot_verify'),limitations:strings(privacy.limitations,'limitations'),
-      privacy_description:'The component validates permitted signal representations. It does not prove all upstream bank behavior or eliminate inference risk.'},measurement:null};
+      privacy_description:'The component validates permitted signal representations. It does not prove all upstream bank behavior or eliminate inference risk.'},measurement};
 }

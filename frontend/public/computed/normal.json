@@ -1,0 +1,170 @@
+{
+  "profile": "person3.graph.v2",
+  "scenario_id": "synthetic-normal",
+  "synthetic": true,
+  "provenance": {
+    "kind": "saved-computed-synthetic",
+    "backend_commit": "f7d1921b788ce76e13b0fe67b57f7f53807a76db",
+    "source_sha256": {
+      "fraudmesh/demo.py": "8ba46ac1eeeadb03ddc7b9486bebcafd56780c070d348fe12037f2f1550203d2",
+      "fraudmesh/analysis.py": "510c5bbe2d2ab9caf4eabb74a9d277039a0e8a3904098812709f4b193223d669",
+      "fraudmesh/graph_engine.py": "de2aa06b5b158b01aed8f6b7b46233d1ca6cfd27bfca0bc8a80133c560811c80",
+      "fraudmesh/triage.py": "62de82cd4c146b3eeccf518b5711436936c8e5a6795e2debc2093f4fb6d4691b"
+    },
+    "function": "fraudmesh.analysis.analyze_signals",
+    "scenario": "normal",
+    "timing": "not measured; saved snapshot",
+    "deployment": "not established by this artifact"
+  },
+  "analysis": {
+    "component_metadata": {
+      "shared_signal_schema": "fraudmesh-shared-signal/v1",
+      "validation": "restricted schema and scalar representations validated",
+      "scenario": "synthetic_only"
+    },
+    "bank_results": [
+      {
+        "institution_id": "bank_a",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      },
+      {
+        "institution_id": "bank_b",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      },
+      {
+        "institution_id": "bank_c",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      }
+    ],
+    "collaborative_alerts": [],
+    "graph": {
+      "nodes": [
+        {
+          "id": "fm1:2ca96c48fbb95bb2198eecf9bc595c548e945a125aa81eccb606c9a02463066e",
+          "institution_ids": [
+            "bank_a"
+          ]
+        },
+        {
+          "id": "fm1:34a3ddd5717e12e6758b497fe52b319a9a079c1bab03ff4eddc3a84a493d06c1",
+          "institution_ids": [
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:41fa2739a63cfeb0dbb966c1670e012cba2e05b2d3cc611e08efba94923c38ea",
+          "institution_ids": [
+            "bank_b",
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:4bc9109d21a2bb02053c2c503a0a816ea8d05103102b12f06fb42ff4b9509ba0",
+          "institution_ids": [
+            "bank_a",
+            "bank_b"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": "sig-1c37f12a79c3db131e15f777",
+          "signal_id": "sig-1c37f12a79c3db131e15f777",
+          "source": "fm1:4bc9109d21a2bb02053c2c503a0a816ea8d05103102b12f06fb42ff4b9509ba0",
+          "target": "fm1:41fa2739a63cfeb0dbb966c1670e012cba2e05b2d3cc611e08efba94923c38ea",
+          "institution_id": "bank_b",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.22308474,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-41a09be1a8deef19daf35cba",
+          "signal_id": "sig-41a09be1a8deef19daf35cba",
+          "source": "fm1:41fa2739a63cfeb0dbb966c1670e012cba2e05b2d3cc611e08efba94923c38ea",
+          "target": "fm1:34a3ddd5717e12e6758b497fe52b319a9a079c1bab03ff4eddc3a84a493d06c1",
+          "institution_id": "bank_c",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.23607028,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-ad36b3f0797cda59fdccdbc5",
+          "signal_id": "sig-ad36b3f0797cda59fdccdbc5",
+          "source": "fm1:2ca96c48fbb95bb2198eecf9bc595c548e945a125aa81eccb606c9a02463066e",
+          "target": "fm1:4bc9109d21a2bb02053c2c503a0a816ea8d05103102b12f06fb42ff4b9509ba0",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.20790814,
+          "channel": "transfer"
+        }
+      ]
+    },
+    "comparison": {
+      "comparison_unit": "structural pattern findings",
+      "local_only": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 3,
+        "finding_count": 0,
+        "findings_by_institution": {
+          "bank_a": [],
+          "bank_b": [],
+          "bank_c": []
+        }
+      },
+      "collaborative": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 3,
+        "finding_count": 0,
+        "findings": []
+      },
+      "interpretation": "Controlled synthetic comparison only. Each bank sees its own permitted subgraph; the combined view can reconstruct patterns whose supporting edges are split across banks."
+    },
+    "privacy": {
+      "service_verifies": [
+        "the request matches the restricted shared-signal schema",
+        "approved scalar representations are used for tokens, buckets, scores, and channels",
+        "the intended graph interface accepts shared signals rather than raw ledger rows"
+      ],
+      "service_cannot_verify": [
+        "the complete upstream behavior of a submitting bank",
+        "the authenticity or authorization of a syntactically valid token",
+        "the absence of all inference risk from shared relationships and timing"
+      ],
+      "limitations": [
+        "HMAC pseudonyms remain linkable",
+        "shared-key custody and rotation are outside this prototype",
+        "three banks are simulated rather than organizationally isolated",
+        "Secure Execution, secure aggregation, differential privacy, and remote attestation are not established"
+      ]
+    },
+    "summary": {
+      "signals_processed": 3,
+      "pseudonymous_entities": 4,
+      "structural_findings": 0,
+      "local_risk_score_usage": "displayed as evidence only; not fused into detection or severity",
+      "schema_validation": "restricted shared-signal schema accepted"
+    },
+    "review_queue": {
+      "policy_version": "ml-graph-triage/v1",
+      "threshold": 0.75,
+      "local_recommended": 0,
+      "combined_recommended": 0,
+      "cross_bank_recommended": 0,
+      "note": "All structural candidates remain visible. Prioritization does not establish fraud."
+    }
+  }
+}

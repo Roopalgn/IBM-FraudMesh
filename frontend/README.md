@@ -53,3 +53,16 @@ One entity can appear in several institutions' contributed relationships. Member
 Transaction-risk flags, local structural findings and combined cases are separate units. ML flag counts and node scores are unavailable when not supplied. Per-signal scores appear on evidence rows without invented node aggregation. Structural extraction remains rule-based; live API results additionally include a fixed ML-informed review policy that affects recommendation/severity and preserves the original structural label. Priority is not fraud probability. Hour buckets do not establish event-level detection timing.
 
 The corrected service reports validation scope and limitations, not an audited count of raw rows shared/received. Those values stay unavailable. LinuxONE deployment, Secure Execution, remote attestation and production privacy guarantees remain unverified. See `docs/verification-current.md`, `docs/demo_script.md` and `docs/person1_handoff.md`.
+
+
+## Retained reliability work after the latest main merge
+
+The current branch preserves main's primary `person3.graph.v2` reference API, every existing fixture/test, and the ML-informed review policy. No backend or shared-contract code is changed by this frontend diff.
+
+The Result source selector adds **Saved API shared/ring/normal/local** examples. These are regenerated using the unchanged current `fraudmesh.analysis.analyze_signals` function, not the older component-only fixtures. Each records a backend revision and source hashes. Their badge says **Saved API result · synthetic**, and they never claim a live request or measured detection timing. Regenerate from the root with `python frontend/scripts/generate-snapshots.py` after installing root requirements.
+
+Live API results now preserve and display the actual `measurement.analysis_ms` and its supplied scope; missing timing stays unavailable. In the current service, scenario-reference timing includes bank-local preparation but excludes HTTP, journal write and rendering. The UI uses the returned scope rather than assuming a fixed definition.
+
+Request generation guards prevent old responses or fixture loads replacing a newer user selection. Closing settings cancels safely without reopening an error dialog. New tests compare saved results against current real backend computation and validate their source hashes.
+
+Integrated launch from the repository root: `python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`, then open http://127.0.0.1:8000. Existing standalone Node launch instructions remain valid. Full frontend checks: `node --test frontend/tests/*.test.mjs` (Python with requirements-dev installed is needed by endpoint tests); set FRAUDMESH_TEST_PYTHON if using a separate environment. Current result: **36 passed**. See docs/recovery-verification.md.

@@ -5,7 +5,7 @@ export function safeBaseUrl(value) {
   return url.href.replace(/\/$/,'');
 }
 export function scenarioMetadata(scenario) {
-  if(!scenario || scenario.response_profile!==GRAPH_PROFILE || typeof scenario.scenario_id!=='string' || !scenario.scenario_id || typeof scenario.synthetic!=='boolean')throw new Error(`Scenario must declare response_profile ${GRAPH_PROFILE}, scenario_id and synthetic. Lead approval of this proposed endpoint envelope is pending.`);
+  if(!scenario || scenario.response_profile!==GRAPH_PROFILE || typeof scenario.scenario_id!=='string' || !scenario.scenario_id || scenario.synthetic!==true)throw new Error(`Scenario must declare response_profile ${GRAPH_PROFILE}, scenario_id and synthetic=true.`);
   const request=scenario.analysis_request;
   // One minimal scenario-reference request. Never forward raw rows or secrets from a scenario response.
   if(!request || typeof request!=='object' || Array.isArray(request) || Object.keys(request).length!==1 || request.scenario_id!==scenario.scenario_id)throw new Error('analysis_request must contain only the matching scenario_id; raw records and tokenization secrets are not accepted.');
@@ -13,6 +13,7 @@ export function scenarioMetadata(scenario) {
 }
 export async function loadAnalysis(value,{fetcher=fetch,onProgress=()=>{},timeout=15000,signal,scenarioName='common'}={}) {
   const base=safeBaseUrl(value);
+  if(!['common','ring','normal','local'].includes(scenarioName))throw new Error('Unknown synthetic scenario.');
   async function request(path,options={}){
     const controller=new AbortController();
     const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)controller.abort();

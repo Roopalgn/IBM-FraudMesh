@@ -13,3 +13,5 @@
 @media(max-width:620px){.source-controls{gap:7px}.source-controls select{width:100%;font-size:10px}.comparison{width:100%}.bank-stats strong{font-size:18px}.metric-value.unavailable{font-size:16px}#source-badge{font-size:8px;max-width:110px}.graph-legend{flex-wrap:wrap}.evidence-table td{overflow-wrap:anywhere}.evidence-table{table-layout:fixed}.evidence-table th:nth-child(2){width:35%}}
 .trail-row>div{min-width:0}.trail-row strong{overflow-wrap:anywhere}
 .table-scroll{overflow-x:auto}.table-scroll table{min-width:660px}.detail-view ul{font-size:11px;color:var(--muted);line-height:1.8;padding-left:17px}
+
+.result-context{font-size:11px;color:var(--muted);margin:0 0 16px;overflow-wrap:anywhere}

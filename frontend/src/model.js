@@ -88,6 +88,6 @@ export function caseExport(data, step, collaborative, source, bankId=null) {
     mode: collaborative ? 'collaborative' : 'local-only', selected_bank: bankId, replay_step: data.replay_supported ? step : null,
     graph: { nodes: data.graph.nodes.filter(n => ids.has(n.id)), edges: view.edges },
     collaborative_alerts: collaborative ? view.alerts : [], local_structural_findings: collaborative ? [] : view.alerts, sharing_summary: collaborative ? data.sharing_summary : null,
-    provenance:data.provenance||null,
+    provenance:data.saved_provenance||data.provenance||null,measurement:data.measurement||null,
     limitations: 'Display export only. No inference, privacy, deployment, or security verification is performed by this frontend. Local-only mode is a visualization of the backend or fixture output, not bank-level access control. Membership describes incidence in bank-contributed signals, not account ownership.' };
 }

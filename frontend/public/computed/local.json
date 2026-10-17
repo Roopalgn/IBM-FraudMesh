@@ -1,0 +1,476 @@
+{
+  "profile": "person3.graph.v2",
+  "scenario_id": "synthetic-local",
+  "synthetic": true,
+  "provenance": {
+    "kind": "saved-computed-synthetic",
+    "backend_commit": "f7d1921b788ce76e13b0fe67b57f7f53807a76db",
+    "source_sha256": {
+      "fraudmesh/demo.py": "8ba46ac1eeeadb03ddc7b9486bebcafd56780c070d348fe12037f2f1550203d2",
+      "fraudmesh/analysis.py": "510c5bbe2d2ab9caf4eabb74a9d277039a0e8a3904098812709f4b193223d669",
+      "fraudmesh/graph_engine.py": "de2aa06b5b158b01aed8f6b7b46233d1ca6cfd27bfca0bc8a80133c560811c80",
+      "fraudmesh/triage.py": "62de82cd4c146b3eeccf518b5711436936c8e5a6795e2debc2093f4fb6d4691b"
+    },
+    "function": "fraudmesh.analysis.analyze_signals",
+    "scenario": "local",
+    "timing": "not measured; saved snapshot",
+    "deployment": "not established by this artifact"
+  },
+  "analysis": {
+    "component_metadata": {
+      "shared_signal_schema": "fraudmesh-shared-signal/v1",
+      "validation": "restricted schema and scalar representations validated",
+      "scenario": "synthetic_only"
+    },
+    "bank_results": [
+      {
+        "institution_id": "bank_a",
+        "signals_processed": 3,
+        "local_structural_findings": [
+          {
+            "alert_id": "FM-RING-f6d5a531f96f",
+            "risk_level": "high",
+            "structural_pattern": "cycle",
+            "cross_institution": false,
+            "institutions_involved": [
+              "bank_a"
+            ],
+            "linked_entities": [
+              "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+              "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+              "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+            ],
+            "evidence": [
+              {
+                "code": "cycle",
+                "supporting_signal_ids": [
+                  "sig-4fa9785279a96ffa79c6a35a",
+                  "sig-59eb55b5d630e794cf9f4192",
+                  "sig-68fd7efbe90237712745f83f"
+                ],
+                "linked_entities": [
+                  "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+                  "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+                  "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+                ]
+              },
+              {
+                "code": "rapid_propagation",
+                "elapsed_minutes": 0,
+                "resolution": "UTC hour buckets"
+              },
+              {
+                "code": "ml_informed_priority",
+                "priority_score": 0.75248877,
+                "review_recommended": true,
+                "mean_local_model_score": 0.2928250666666667,
+                "policy_version": "ml-graph-triage/v1"
+              }
+            ],
+            "supporting_signal_ids": [
+              "sig-4fa9785279a96ffa79c6a35a",
+              "sig-59eb55b5d630e794cf9f4192",
+              "sig-68fd7efbe90237712745f83f"
+            ],
+            "timestamp_buckets": [
+              "2026-10-17T10:00Z"
+            ],
+            "time_window_minutes": 0,
+            "max_local_risk_score": 0.29550979,
+            "edge_count": 3,
+            "triage": {
+              "policy_version": "ml-graph-triage/v1",
+              "priority_score": 0.75248877,
+              "review_recommended": true,
+              "threshold": 0.75,
+              "features": {
+                "structure_strength": 1.0,
+                "mean_local_model_score": 0.2928250666666667,
+                "nearby_hour_buckets": 1.0,
+                "amount_band_consistency": 1.0
+              },
+              "score_meaning": "Transparent review priority, not a fraud probability"
+            },
+            "structural_risk_level": "medium"
+          }
+        ]
+      },
+      {
+        "institution_id": "bank_b",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      },
+      {
+        "institution_id": "bank_c",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      }
+    ],
+    "collaborative_alerts": [
+      {
+        "alert_id": "FM-RING-f6d5a531f96f",
+        "risk_level": "high",
+        "structural_pattern": "cycle",
+        "cross_institution": false,
+        "institutions_involved": [
+          "bank_a"
+        ],
+        "linked_entities": [
+          "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+          "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+          "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+        ],
+        "evidence": [
+          {
+            "code": "cycle",
+            "supporting_signal_ids": [
+              "sig-4fa9785279a96ffa79c6a35a",
+              "sig-59eb55b5d630e794cf9f4192",
+              "sig-68fd7efbe90237712745f83f"
+            ],
+            "linked_entities": [
+              "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+              "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+              "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+            ]
+          },
+          {
+            "code": "rapid_propagation",
+            "elapsed_minutes": 0,
+            "resolution": "UTC hour buckets"
+          },
+          {
+            "code": "ml_informed_priority",
+            "priority_score": 0.75248877,
+            "review_recommended": true,
+            "mean_local_model_score": 0.2928250666666667,
+            "policy_version": "ml-graph-triage/v1"
+          }
+        ],
+        "supporting_signal_ids": [
+          "sig-4fa9785279a96ffa79c6a35a",
+          "sig-59eb55b5d630e794cf9f4192",
+          "sig-68fd7efbe90237712745f83f"
+        ],
+        "timestamp_buckets": [
+          "2026-10-17T10:00Z"
+        ],
+        "time_window_minutes": 0,
+        "max_local_risk_score": 0.29550979,
+        "edge_count": 3,
+        "triage": {
+          "policy_version": "ml-graph-triage/v1",
+          "priority_score": 0.75248877,
+          "review_recommended": true,
+          "threshold": 0.75,
+          "features": {
+            "structure_strength": 1.0,
+            "mean_local_model_score": 0.2928250666666667,
+            "nearby_hour_buckets": 1.0,
+            "amount_band_consistency": 1.0
+          },
+          "score_meaning": "Transparent review priority, not a fraud probability"
+        },
+        "structural_risk_level": "medium"
+      }
+    ],
+    "graph": {
+      "nodes": [
+        {
+          "id": "fm1:020952bb1a3147a13e7c5d34fdfe7e836644897a31a8c477f9aa82a7be2ececd",
+          "institution_ids": [
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:53d9e19ea915b5db15b98d6688d1234b87f329ea5a0228b8664bda7474453c24",
+          "institution_ids": [
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+          "institution_ids": [
+            "bank_a"
+          ]
+        },
+        {
+          "id": "fm1:7b450d413b0e673a596d5a7999a9e97f74d1ced760470c8347e829a502bb1158",
+          "institution_ids": [
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+          "institution_ids": [
+            "bank_a"
+          ]
+        },
+        {
+          "id": "fm1:b0bc777e5bfc559c93da77d547ef0cc14c56fc50b2901630bc9e1119fe377e96",
+          "institution_ids": [
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed",
+          "institution_ids": [
+            "bank_a"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": "sig-13cc2009c9890f85cce7c9dc",
+          "signal_id": "sig-13cc2009c9890f85cce7c9dc",
+          "source": "fm1:7b450d413b0e673a596d5a7999a9e97f74d1ced760470c8347e829a502bb1158",
+          "target": "fm1:020952bb1a3147a13e7c5d34fdfe7e836644897a31a8c477f9aa82a7be2ececd",
+          "institution_id": "bank_b",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.16578858,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-4fa9785279a96ffa79c6a35a",
+          "signal_id": "sig-4fa9785279a96ffa79c6a35a",
+          "source": "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed",
+          "target": "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.29284917,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-59eb55b5d630e794cf9f4192",
+          "signal_id": "sig-59eb55b5d630e794cf9f4192",
+          "source": "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+          "target": "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.29011624,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-68fd7efbe90237712745f83f",
+          "signal_id": "sig-68fd7efbe90237712745f83f",
+          "source": "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+          "target": "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.29550979,
+          "channel": "transfer"
+        },
+        {
+          "id": "sig-defcbf08ceaf0d025b56714a",
+          "signal_id": "sig-defcbf08ceaf0d025b56714a",
+          "source": "fm1:53d9e19ea915b5db15b98d6688d1234b87f329ea5a0228b8664bda7474453c24",
+          "target": "fm1:b0bc777e5bfc559c93da77d547ef0cc14c56fc50b2901630bc9e1119fe377e96",
+          "institution_id": "bank_c",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "lt_1k",
+          "local_risk_score": 0.16578858,
+          "channel": "transfer"
+        }
+      ]
+    },
+    "comparison": {
+      "comparison_unit": "structural pattern findings",
+      "local_only": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 5,
+        "finding_count": 1,
+        "findings_by_institution": {
+          "bank_a": [
+            {
+              "alert_id": "FM-RING-f6d5a531f96f",
+              "risk_level": "high",
+              "structural_pattern": "cycle",
+              "cross_institution": false,
+              "institutions_involved": [
+                "bank_a"
+              ],
+              "linked_entities": [
+                "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+                "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+                "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+              ],
+              "evidence": [
+                {
+                  "code": "cycle",
+                  "supporting_signal_ids": [
+                    "sig-4fa9785279a96ffa79c6a35a",
+                    "sig-59eb55b5d630e794cf9f4192",
+                    "sig-68fd7efbe90237712745f83f"
+                  ],
+                  "linked_entities": [
+                    "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+                    "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+                    "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+                  ]
+                },
+                {
+                  "code": "rapid_propagation",
+                  "elapsed_minutes": 0,
+                  "resolution": "UTC hour buckets"
+                },
+                {
+                  "code": "ml_informed_priority",
+                  "priority_score": 0.75248877,
+                  "review_recommended": true,
+                  "mean_local_model_score": 0.2928250666666667,
+                  "policy_version": "ml-graph-triage/v1"
+                }
+              ],
+              "supporting_signal_ids": [
+                "sig-4fa9785279a96ffa79c6a35a",
+                "sig-59eb55b5d630e794cf9f4192",
+                "sig-68fd7efbe90237712745f83f"
+              ],
+              "timestamp_buckets": [
+                "2026-10-17T10:00Z"
+              ],
+              "time_window_minutes": 0,
+              "max_local_risk_score": 0.29550979,
+              "edge_count": 3,
+              "triage": {
+                "policy_version": "ml-graph-triage/v1",
+                "priority_score": 0.75248877,
+                "review_recommended": true,
+                "threshold": 0.75,
+                "features": {
+                  "structure_strength": 1.0,
+                  "mean_local_model_score": 0.2928250666666667,
+                  "nearby_hour_buckets": 1.0,
+                  "amount_band_consistency": 1.0
+                },
+                "score_meaning": "Transparent review priority, not a fraud probability"
+              },
+              "structural_risk_level": "medium"
+            }
+          ],
+          "bank_b": [],
+          "bank_c": []
+        }
+      },
+      "collaborative": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 5,
+        "finding_count": 1,
+        "findings": [
+          {
+            "alert_id": "FM-RING-f6d5a531f96f",
+            "risk_level": "high",
+            "structural_pattern": "cycle",
+            "cross_institution": false,
+            "institutions_involved": [
+              "bank_a"
+            ],
+            "linked_entities": [
+              "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+              "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+              "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+            ],
+            "evidence": [
+              {
+                "code": "cycle",
+                "supporting_signal_ids": [
+                  "sig-4fa9785279a96ffa79c6a35a",
+                  "sig-59eb55b5d630e794cf9f4192",
+                  "sig-68fd7efbe90237712745f83f"
+                ],
+                "linked_entities": [
+                  "fm1:6224cdf9f3706cbce26967675aa1531ce4fc6ef485756c639669b7af30bc941e",
+                  "fm1:a843131769a76ee14dd198003a5f6dbdb4402103793b3eea7214d38834994c91",
+                  "fm1:b720f4d31b632383a5cb1ff54b82604369b1d957891a4cf6c21d71c0fb9c24ed"
+                ]
+              },
+              {
+                "code": "rapid_propagation",
+                "elapsed_minutes": 0,
+                "resolution": "UTC hour buckets"
+              },
+              {
+                "code": "ml_informed_priority",
+                "priority_score": 0.75248877,
+                "review_recommended": true,
+                "mean_local_model_score": 0.2928250666666667,
+                "policy_version": "ml-graph-triage/v1"
+              }
+            ],
+            "supporting_signal_ids": [
+              "sig-4fa9785279a96ffa79c6a35a",
+              "sig-59eb55b5d630e794cf9f4192",
+              "sig-68fd7efbe90237712745f83f"
+            ],
+            "timestamp_buckets": [
+              "2026-10-17T10:00Z"
+            ],
+            "time_window_minutes": 0,
+            "max_local_risk_score": 0.29550979,
+            "edge_count": 3,
+            "triage": {
+              "policy_version": "ml-graph-triage/v1",
+              "priority_score": 0.75248877,
+              "review_recommended": true,
+              "threshold": 0.75,
+              "features": {
+                "structure_strength": 1.0,
+                "mean_local_model_score": 0.2928250666666667,
+                "nearby_hour_buckets": 1.0,
+                "amount_band_consistency": 1.0
+              },
+              "score_meaning": "Transparent review priority, not a fraud probability"
+            },
+            "structural_risk_level": "medium"
+          }
+        ]
+      },
+      "interpretation": "Controlled synthetic comparison only. Each bank sees its own permitted subgraph; the combined view can reconstruct patterns whose supporting edges are split across banks."
+    },
+    "privacy": {
+      "service_verifies": [
+        "the request matches the restricted shared-signal schema",
+        "approved scalar representations are used for tokens, buckets, scores, and channels",
+        "the intended graph interface accepts shared signals rather than raw ledger rows"
+      ],
+      "service_cannot_verify": [
+        "the complete upstream behavior of a submitting bank",
+        "the authenticity or authorization of a syntactically valid token",
+        "the absence of all inference risk from shared relationships and timing"
+      ],
+      "limitations": [
+        "HMAC pseudonyms remain linkable",
+        "shared-key custody and rotation are outside this prototype",
+        "three banks are simulated rather than organizationally isolated",
+        "Secure Execution, secure aggregation, differential privacy, and remote attestation are not established"
+      ]
+    },
+    "summary": {
+      "signals_processed": 5,
+      "pseudonymous_entities": 7,
+      "structural_findings": 1,
+      "local_risk_score_usage": "displayed as evidence only; not fused into detection or severity",
+      "schema_validation": "restricted shared-signal schema accepted"
+    },
+    "review_queue": {
+      "policy_version": "ml-graph-triage/v1",
+      "threshold": 0.75,
+      "local_recommended": 1,
+      "combined_recommended": 1,
+      "cross_bank_recommended": 0,
+      "note": "All structural candidates remain visible. Prioritization does not establish fraud."
+    }
+  }
+}
