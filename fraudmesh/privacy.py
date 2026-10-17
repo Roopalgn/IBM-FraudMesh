@@ -178,6 +178,10 @@ def validate_shared_signal(signal: Mapping[str, Any]) -> None:
     missing = SHARED_SIGNAL_FIELDS - fields
     if missing:
         raise PrivacyContractError(f"required shared fields missing: {sorted(missing)}")
+    if not isinstance(signal["signal_id"], str) or not signal["signal_id"].strip():
+        raise PrivacyContractError("signal_id must be a non-empty string")
+    if not isinstance(signal["institution_id"], str) or not signal["institution_id"].strip():
+        raise PrivacyContractError("institution_id must be a non-empty string")
     if not isinstance(signal["source_entity_token"], str) or not signal[
         "source_entity_token"
     ].startswith(f"{TOKEN_VERSION}:"):
@@ -193,6 +197,11 @@ def validate_shared_signal(signal: Mapping[str, Any]) -> None:
 
 def validate_shared_signals(signals: Iterable[Mapping[str, Any]]) -> None:
     """Validate all signals without retaining local records."""
+    seen_signal_ids: set[str] = set()
     for signal in signals:
         validate_shared_signal(signal)
+        signal_id = signal["signal_id"]
+        if signal_id in seen_signal_ids:
+            raise PrivacyContractError(f"duplicate signal_id: {signal_id}")
+        seen_signal_ids.add(signal_id)
 

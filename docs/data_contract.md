@@ -29,5 +29,7 @@ Banks call `pseudonymize_identifier(identifier, secret)` before signal creation.
 
 ## Detector contract
 
-`detect_fraud_rings(shared_signals: list[dict]) -> dict` validates all signals, creates a directed NetworkX graph, and returns alerts only for multi-bank connected components containing at least three edges and a structural pattern such as a cycle, fan-in, or fan-out. Alert evidence includes the contributing signal references, involved institutions, pseudonymous nodes, time buckets, and rule-based reason codes. It does not claim that every alert is fraud.
+`detect_fraud_rings(shared_signals: list[dict]) -> dict` validates all signals, rejects duplicate signal references, creates a directed NetworkX graph, and returns alerts only for multi-bank connected components containing at least three edges and a structural pattern such as a cycle, fan-in, or fan-out. Alert evidence includes the contributing signal references, involved institutions, pseudonymous nodes, time buckets, and rule-based reason codes. It does not claim that every alert is fraud.
+
+`compare_local_and_collaborative(shared_signals: list[dict]) -> dict` runs the same detector once per bank and once over the combined allowlisted signals. Its output is a controlled synthetic comparison for the dashboard and demo; it must not be presented as a generalization or production performance benchmark.
 

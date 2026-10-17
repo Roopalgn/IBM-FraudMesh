@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+from collections import defaultdict
 from typing import Any, Iterable, Mapping
 
 import networkx as nx
@@ -129,5 +130,50 @@ def detect_fraud_rings(shared_signals: list[dict[str, Any]]) -> dict[str, Any]:
                 for source, target, data in graph.edges(data=True)
             ],
         },
+    }
+
+
+def compare_local_and_collaborative(
+    shared_signals: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Compare each bank's isolated result with the combined graph result.
+
+    This is deliberately a controlled-scenario comparison, not a claim about
+    production fraud performance. Each bank runs the same detector on only
+    its own permitted signals; the collaborative run then sees all signals.
+    """
+    validate_shared_signals(shared_signals)
+    by_institution: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for signal in shared_signals:
+        by_institution[signal["institution_id"]].append(signal)
+
+    local_results = {
+        institution_id: detect_fraud_rings(signals)
+        for institution_id, signals in sorted(by_institution.items())
+    }
+    collaborative_result = detect_fraud_rings(shared_signals)
+    local_alert_count = sum(
+        len(result["alerts"]) for result in local_results.values()
+    )
+    return {
+        "local_only": {
+            "institutions": list(local_results),
+            "signals_processed": len(shared_signals),
+            "alerts_generated": local_alert_count,
+            "alerts_by_institution": {
+                institution_id: result["alerts"]
+                for institution_id, result in local_results.items()
+            },
+        },
+        "collaborative": {
+            "institutions": list(by_institution),
+            "signals_processed": len(shared_signals),
+            "alerts_generated": len(collaborative_result["alerts"]),
+            "alerts": collaborative_result["alerts"],
+        },
+        "interpretation": (
+            "Controlled synthetic comparison: the collaborative graph has "
+            "cross-institution visibility that isolated bank views do not."
+        ),
     }
 

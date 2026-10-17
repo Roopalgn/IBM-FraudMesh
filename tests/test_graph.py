@@ -2,7 +2,7 @@
 
 import unittest
 
-from fraudmesh.graph_engine import detect_fraud_rings
+from fraudmesh.graph_engine import compare_local_and_collaborative, detect_fraud_rings
 from fraudmesh.privacy import PrivacyContractError, create_shared_signal, pseudonymize_identifier
 from fraudmesh.scenarios import DEMO_SECRET, three_bank_fraud_ring
 
@@ -19,6 +19,12 @@ class PrivacyTests(unittest.TestCase):
         signal["amount"] = 18_500
         with self.assertRaises(PrivacyContractError):
             detect_fraud_rings([signal])
+
+    def test_duplicate_signal_ids_are_rejected(self):
+        signals = three_bank_fraud_ring()
+        signals[1]["signal_id"] = signals[0]["signal_id"]
+        with self.assertRaises(PrivacyContractError):
+            detect_fraud_rings(signals)
 
 
 class GraphEngineTests(unittest.TestCase):
@@ -45,6 +51,12 @@ class GraphEngineTests(unittest.TestCase):
         )
         result = detect_fraud_rings([signal])
         self.assertEqual(result["alerts"], [])
+
+    def test_comparison_exposes_local_vs_collaborative_result(self):
+        result = compare_local_and_collaborative(three_bank_fraud_ring())
+        self.assertEqual(result["local_only"]["alerts_generated"], 0)
+        self.assertEqual(result["collaborative"]["alerts_generated"], 1)
+        self.assertEqual(result["collaborative"]["alerts"][0]["risk_level"], "high")
 
 
 if __name__ == "__main__":
