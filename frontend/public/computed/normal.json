@@ -1,0 +1,196 @@
+{
+  "provenance": {
+    "kind": "saved-computed-synthetic",
+    "backend_commit": "c1ff359e493471552ab2c32cdbe2647216f2e2d0",
+    "source_sha256": {
+      "fraudmesh/demo.py": "8ba46ac1eeeadb03ddc7b9486bebcafd56780c070d348fe12037f2f1550203d2",
+      "fraudmesh/service.py": "b18fe70297a198e4cc25122ef37c03784a65e251b4ebd15064ad85ec2dd3b426",
+      "fraudmesh/graph_engine.py": "d3bbed7bf420d48ff6c17758a65da88136e5ba88ad1e168e80f7ce8952bf5d4d",
+      "fraudmesh/privacy.py": "d49811e2077474a5fa4e659812a32a015c20ec0f5cb51d76f3ddeab2dd3d1b5b"
+    },
+    "function": "fraudmesh.service.analyze_for_dashboard",
+    "scenario": "normal",
+    "timing": "not measured; saved snapshot",
+    "deployment": "not established by this artifact"
+  },
+  "analysis": {
+    "schema_version": "1.0",
+    "scenario_id": "synthetic-normal",
+    "synthetic": true,
+    "banks": [
+      {
+        "id": "bank_a",
+        "name": "Bank A",
+        "entity_count": 2,
+        "local_alerts": 0,
+        "local_ring_count": 0,
+        "local_findings": [
+          {
+            "title": "Local graph analysis",
+            "detail": "0 structural pattern findings from this bank's own signals; 0 high transaction risk scores."
+          }
+        ]
+      },
+      {
+        "id": "bank_b",
+        "name": "Bank B",
+        "entity_count": 2,
+        "local_alerts": 0,
+        "local_ring_count": 0,
+        "local_findings": [
+          {
+            "title": "Local graph analysis",
+            "detail": "0 structural pattern findings from this bank's own signals; 0 high transaction risk scores."
+          }
+        ]
+      },
+      {
+        "id": "bank_c",
+        "name": "Bank C",
+        "entity_count": 2,
+        "local_alerts": 0,
+        "local_ring_count": 0,
+        "local_findings": [
+          {
+            "title": "Local graph analysis",
+            "detail": "0 structural pattern findings from this bank's own signals; 0 high transaction risk scores."
+          }
+        ]
+      }
+    ],
+    "graph": {
+      "nodes": [
+        {
+          "id": "fm1:2ca96c48fbb95bb2198eecf9bc595c548e945a125aa81eccb606c9a02463066e",
+          "label": "Entity 01",
+          "bank_id": "bank_a",
+          "bank_ids": [
+            "bank_a"
+          ],
+          "local_risk": 0.20790814
+        },
+        {
+          "id": "fm1:34a3ddd5717e12e6758b497fe52b319a9a079c1bab03ff4eddc3a84a493d06c1",
+          "label": "Entity 02",
+          "bank_id": "bank_c",
+          "bank_ids": [
+            "bank_c"
+          ],
+          "local_risk": 0.23607028
+        },
+        {
+          "id": "fm1:41fa2739a63cfeb0dbb966c1670e012cba2e05b2d3cc611e08efba94923c38ea",
+          "label": "Entity 03",
+          "bank_id": "bank_b",
+          "bank_ids": [
+            "bank_b",
+            "bank_c"
+          ],
+          "local_risk": 0.23607028
+        },
+        {
+          "id": "fm1:4bc9109d21a2bb02053c2c503a0a816ea8d05103102b12f06fb42ff4b9509ba0",
+          "label": "Entity 04",
+          "bank_id": "bank_a",
+          "bank_ids": [
+            "bank_a",
+            "bank_b"
+          ],
+          "local_risk": 0.22308474
+        }
+      ],
+      "edges": [
+        {
+          "id": "sig-1c37f12a79c3db131e15f777",
+          "source": "fm1:4bc9109d21a2bb02053c2c503a0a816ea8d05103102b12f06fb42ff4b9509ba0",
+          "target": "fm1:41fa2739a63cfeb0dbb966c1670e012cba2e05b2d3cc611e08efba94923c38ea",
+          "institution_id": "bank_b",
+          "local_risk_score": 0.22308474,
+          "kind": "permitted_transfer",
+          "step": 1,
+          "time_bucket": "2026-10-17T10:00Z",
+          "risk_band": "low"
+        },
+        {
+          "id": "sig-41a09be1a8deef19daf35cba",
+          "source": "fm1:41fa2739a63cfeb0dbb966c1670e012cba2e05b2d3cc611e08efba94923c38ea",
+          "target": "fm1:34a3ddd5717e12e6758b497fe52b319a9a079c1bab03ff4eddc3a84a493d06c1",
+          "institution_id": "bank_c",
+          "local_risk_score": 0.23607028,
+          "kind": "permitted_transfer",
+          "step": 2,
+          "time_bucket": "2026-10-17T10:00Z",
+          "risk_band": "low"
+        },
+        {
+          "id": "sig-ad36b3f0797cda59fdccdbc5",
+          "source": "fm1:2ca96c48fbb95bb2198eecf9bc595c548e945a125aa81eccb606c9a02463066e",
+          "target": "fm1:4bc9109d21a2bb02053c2c503a0a816ea8d05103102b12f06fb42ff4b9509ba0",
+          "institution_id": "bank_a",
+          "local_risk_score": 0.20790814,
+          "kind": "permitted_transfer",
+          "step": 3,
+          "time_bucket": "2026-10-17T10:00Z",
+          "risk_band": "low"
+        }
+      ]
+    },
+    "collaborative_alerts": [],
+    "comparison": {
+      "comparison_unit": "structural pattern findings",
+      "local_only": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 3,
+        "finding_count": 0,
+        "findings_by_institution": {
+          "bank_a": [],
+          "bank_b": [],
+          "bank_c": []
+        }
+      },
+      "collaborative": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 3,
+        "finding_count": 0,
+        "findings": []
+      },
+      "interpretation": "Controlled synthetic comparison only. Each bank sees its own permitted subgraph; the combined view can reconstruct patterns whose supporting edges are split across banks."
+    },
+    "sharing_summary": {
+      "raw_rows_shared": null,
+      "shared_fields": [
+        "amount_bucket",
+        "channel",
+        "destination_entity_token",
+        "institution_id",
+        "local_risk_score",
+        "signal_id",
+        "source_entity_token",
+        "timestamp_bucket"
+      ],
+      "retained_local": [
+        "Raw entity and transaction references",
+        "Exact amounts and timestamps",
+        "Evaluation labels"
+      ],
+      "execution_verified": false,
+      "validation_scope": "Accepted signal schema and value formats only; not a network audit or sender attestation."
+    },
+    "score_semantics": "Node risk is the maximum incident transaction ML score, not an entity fraud probability.",
+    "summary": {
+      "signals_processed": 3,
+      "pseudonymous_entities": 4,
+      "structural_findings": 0,
+      "local_risk_score_usage": "displayed as evidence only; not fused into detection or severity",
+      "schema_validation": "restricted shared-signal schema accepted"
+    }
+  }
+}

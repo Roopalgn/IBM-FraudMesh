@@ -53,7 +53,9 @@ export function validateAnalysis(input) {
   const alerts = array(input.collaborative_alerts, 'collaborative_alerts', 100).map(a => {
     const refs = strings(a.node_ids, 'node_ids');
     const edgeRefs = strings(a.edge_ids, 'edge_ids');
+    if (new Set(refs).size !== refs.length || new Set(edgeRefs).size !== edgeRefs.length) throw new Error('Duplicate alert evidence references.');
     if (refs.some(id => !nodeIds.has(id)) || edgeRefs.some(id => !edgeIds.has(id))) throw new Error('Alert references missing graph evidence.');
+    if (edges.some(e=>edgeRefs.includes(e.id)&&(!refs.includes(e.source)||!refs.includes(e.target)))) throw new Error('Alert nodes omit a supporting edge endpoint.');
     const step = integer(a.detected_at_step, 'detected_at_step', 1, 200);
     if (edges.some(e => edgeRefs.includes(e.id) && e.step > step)) throw new Error('Alert arrives before its supporting relationships.');
     return { id: string(a.id, 'alert.id'), title: string(a.title, 'alert.title'), severity: string(a.severity, 'severity'),
@@ -63,11 +65,15 @@ export function validateAnalysis(input) {
   unique(alerts, 'alerts');
   const summary = input.sharing_summary;
   if (!summary || typeof summary.execution_verified !== 'boolean') throw new Error('sharing_summary.execution_verified must be explicit.');
+  const measurement=input.measurement==null?null:{analysis_ms:number(input.measurement.analysis_ms,'measurement.analysis_ms'),scope:string(input.measurement.scope,'measurement.scope')};
+  const comparison=input.comparison==null?null:{unit:string(input.comparison.comparison_unit,'comparison_unit'),local_patterns:integer(input.comparison.local_only?.finding_count,'local pattern count'),combined_patterns:integer(input.comparison.collaborative?.finding_count,'combined pattern count')};
+  if(comparison&&(comparison.unit!=='structural pattern findings'||comparison.local_patterns!==banks.reduce((sum,b)=>sum+b.local_ring_count,0)||comparison.combined_patterns<alerts.length))throw new Error('Structural comparison disagrees with supplied findings.');
   return { schema_version: '1.0', scenario_id: string(input.scenario_id, 'scenario_id'), synthetic: input.synthetic,
+    measurement,comparison,score_semantics:input.score_semantics===undefined?null:string(input.score_semantics,'score_semantics'),
     banks, graph: { nodes, edges }, collaborative_alerts: alerts,
     sharing_summary: { raw_rows_shared: summary.raw_rows_shared === null ? null : integer(summary.raw_rows_shared, 'raw_rows_shared'),
       shared_fields: strings(summary.shared_fields, 'shared_fields'), retained_local: strings(summary.retained_local, 'retained_local'),
-      execution_verified: summary.execution_verified } };
+      execution_verified: summary.execution_verified,validation_scope:summary.validation_scope===undefined?null:string(summary.validation_scope,'validation_scope') } };
 }
 export function maxStep(data) {
   return Math.max(0, ...data.graph.edges.map(e => e.step), ...data.collaborative_alerts.map(a => a.detected_at_step));
@@ -99,8 +105,9 @@ export function caseExport(data, step, collaborative, source) {
   const view = deriveView(data, step, collaborative);
   const ids = new Set(view.edges.flatMap(e => [e.source, e.target]));
   return { exported_at: new Date().toISOString(), source, synthetic: data.synthetic, scenario_id: data.scenario_id,
-    mode: collaborative ? 'collaborative' : 'local-only', replay_step: step,
+    mode: collaborative ? 'collaborative' : 'local-only', replay_step: source==='fixture'?step:null,
     graph: { nodes: view.nodes.filter(n => ids.has(n.id)), edges: view.edges },
     collaborative_alerts: view.alerts, sharing_summary: collaborative ? data.sharing_summary : null,
+    measurement:data.measurement,provenance:data.provenance||null,
     limitations: 'Display export only. No inference, privacy, deployment, or security verification is performed by this frontend. Local-only mode is a visualization of the backend or fixture output, not bank-level access control.' };
 }
