@@ -9,6 +9,7 @@ import argparse
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import json
+import hashlib
 import math
 from pathlib import Path
 import random
@@ -17,8 +18,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from fraudmesh.ml_model import (FEATURE_NAMES, MODEL, extract_features,
-                                predict_probability, sigmoid)
+from fraudmesh.ml_model import (FEATURE_NAMES, MODEL, MODEL_VERSION, extract_features,
+                                predict_probability, sigmoid, score_transactions)
 
 SEED = 20261017
 
@@ -31,6 +32,8 @@ def generate_dataset(seed: int = SEED, days: int = 40) -> list[dict]:
     current transfer. Labels are assigned to generated scenarios, not inferred
     from the features, and are retained for evaluation only.
     """
+    if isinstance(days, bool) or not isinstance(days, int) or days < 5:
+        raise ValueError("days must be an integer >= 5 for train/validation/test splits")
     rng = random.Random(seed)
     rows = []
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -88,11 +91,19 @@ def split_dataset(rows):
     """60/20/20 by whole chronological days; entities are disjoint by day."""
     days = sorted({row["timestamp"][:10] for row in rows})
     train_end, validation_end = int(len(days) * .6), int(len(days) * .8)
-    return tuple([row for row in rows if row["timestamp"][:10] in set(part)]
-                 for part in (days[:train_end], days[train_end:validation_end], days[validation_end:]))
+    if len(days) < 5:
+        raise ValueError("At least five distinct days are required")
+    partitions = [set(part) for part in
+                  (days[:train_end], days[train_end:validation_end], days[validation_end:])]
+    return tuple([row for row in rows if row["timestamp"][:10] in part]
+                 for part in partitions)
 
 
 def train_model(rows, epochs=350):
+    if not rows:
+        raise ValueError("Training requires non-empty rows")
+    if any(type(row.get("is_fraud")) is not int or row["is_fraud"] not in (0, 1) for row in rows):
+        raise ValueError("Training labels must be integer 0 or 1")
     x = [extract_features(row) for row in rows]
     y = [row["is_fraud"] for row in rows]
     n, width = len(x), len(FEATURE_NAMES)
@@ -137,6 +148,53 @@ def evaluate(rows, model):
             "confusion_matrix_order": "rows=true [0,1], columns=predicted [0,1]"}
 
 
+def models_match(first, second):
+    """Allow ordinary cross-platform floating-point rounding, not model drift."""
+    return all(math.isclose(a, b, rel_tol=1e-10, abs_tol=1e-12)
+               for key in ("means", "scales", "weights")
+               for a, b in zip(first[key], second[key])) and all(
+        math.isclose(first[key], second[key], rel_tol=1e-10, abs_tol=1e-12)
+        for key in ("bias", "threshold"))
+
+
+def dataset_profile(rows):
+    """Inspect actual generated rows rather than assume their schema."""
+    fields = sorted({key for row in rows for key in row})
+    return {"rows": len(rows), "columns": {
+        field: {"types": sorted({type(row[field]).__name__ for row in rows if field in row}),
+                "missing_or_null": sum(field not in row or row[field] is None for row in rows)}
+        for field in fields}, "sha256_canonical_json": hashlib.sha256(
+            json.dumps(rows, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()}
+
+
+def local_only_demo(rows):
+    """Bank-partitioned embedded-model outputs, with separate evaluation truth.
+
+    No graph detection, cross-bank features, or access-control claim. The caller
+    provides bank-visible prior-history features; labels are stripped explicitly
+    before inference. This artifact stays local to the evaluation workstream.
+    """
+    banks = {}
+    for bank in sorted({row["institution_id"] for row in rows}):
+        local_rows = [row for row in rows if row["institution_id"] == bank]
+        inference_rows = [{key: row[key] for key in
+                           ("transaction_id", "institution_id", *FEATURE_NAMES)} for row in local_rows]
+        scores = score_transactions(inference_rows)
+        banks[bank] = {"transaction_count": len(local_rows), "scores": scores,
+                       "evaluation_only_metrics": evaluate(local_rows, MODEL)}
+    scores_by_id = {score["transaction_id"]: score for bank in banks.values() for score in bank["scores"]}
+    truth = []
+    for row in rows:
+        if row["scenario_id"].endswith("-ring"):
+            truth.append({"transaction_id": row["transaction_id"], "scenario_id": row["scenario_id"],
+                          "institution_id": row["institution_id"], "is_fraud": row["is_fraud"],
+                          "local_prediction": scores_by_id[row["transaction_id"]]["prediction"]})
+    return {"data_kind": "synthetic; embedded local baseline only",
+            "model_version": MODEL_VERSION, "banks": banks,
+            "evaluation_only_ring_truth": truth,
+            "limitations": "Partitions are simulated, not security isolation. No collaborative metrics or ring detector."}
+
+
 def run(seed=SEED):
     rows = generate_dataset(seed)
     train, validation, test = split_dataset(rows)
@@ -154,7 +212,8 @@ def run(seed=SEED):
               "threshold_selection": "maximum validation F1, higher threshold breaks ties",
               "threshold": model["threshold"], "validation": evaluate(validation, model),
               "held_out_test": evaluate(test, model),
-              "embedded_model_matches": model == MODEL}
+              "embedded_model_matches": models_match(model, MODEL),
+              "dataset_profile": dataset_profile(rows)}
     return rows, model, report
 
 
@@ -173,12 +232,20 @@ def main():
         if count != 1:
             raise RuntimeError("Expected exactly one embedded model block")
         path.write_text(text, encoding="utf-8")
+        # Align subsequent in-process demo scoring with the model just written.
+        MODEL.clear()
+        MODEL.update(model)
         report["embedded_model_matches"] = True
     if args.output_dir:
         args.output_dir.mkdir(parents=True, exist_ok=True)
         (args.output_dir / "transactions.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
         (args.output_dir / "model.json").write_text(json.dumps(model, indent=2), encoding="utf-8")
         (args.output_dir / "evaluation.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        # The deployed embedded model is separate from an arbitrary --seed retrain.
+        # Report which model is used so alternate runs cannot mislabel its outputs.
+        _, _, held_out = split_dataset(rows)
+        (args.output_dir / "local_baseline_demo.json").write_text(
+            json.dumps(local_only_demo(held_out), indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
 
 

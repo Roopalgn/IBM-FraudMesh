@@ -1,9 +1,15 @@
 import copy
 import math
 import unittest
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
 
 from fraudmesh.ml_model import MODEL, extract_features, score_transactions
-from scripts.train_ml_baseline import generate_dataset, run, split_dataset
+from scripts.train_ml_baseline import (generate_dataset, run, split_dataset,
+                                      dataset_profile, local_only_demo, models_match, train_model)
 
 
 def transaction(**updates):
@@ -14,6 +20,21 @@ def transaction(**updates):
 
 
 class ScoringTests(unittest.TestCase):
+    def test_exact_output_contract(self):
+        result = score_transactions([transaction()])[0]
+        self.assertEqual(set(result), {"transaction_id", "institution_id", "local_risk_score",
+                                       "prediction", "reason_codes", "model_version"})
+        self.assertIsInstance(result["local_risk_score"], float)
+        self.assertIs(type(result["prediction"]), int)
+        self.assertIn(result["prediction"], (0, 1))
+        self.assertIsInstance(result["reason_codes"], list)
+        self.assertTrue(all(isinstance(reason, str) for reason in result["reason_codes"]))
+        self.assertIsInstance(result["model_version"], str)
+        for field in ("transaction_id", "institution_id"):
+            for value in (None, "", "  ", 12):
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    score_transactions([transaction(**{field: value})])
+
     def test_empty(self):
         self.assertEqual(score_transactions([]), [])
 
@@ -81,7 +102,7 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(len(ring), 9)
 
     def test_features_use_only_prior_bank_history(self):
-        rows = generate_dataset(days=2)
+        rows = generate_dataset(days=5)
         from datetime import datetime, timedelta
         for index, row in enumerate(rows):
             now = datetime.fromisoformat(row["timestamp"])
@@ -94,10 +115,57 @@ class DatasetTests(unittest.TestCase):
 
     def test_training_reproduces_embedded_model_and_metrics(self):
         _, model, report = run()
-        self.assertEqual(model, MODEL)
+        self.assertTrue(models_match(model, MODEL))
         metric = report["held_out_test"]
         self.assertEqual(sum(map(sum, metric["confusion_matrix"])), metric["rows"])
         self.assertTrue(0 <= metric["f1"] <= 1)
+
+    def test_invalid_dataset_and_training(self):
+        for days in (0, 1, 4, True, 3.5):
+            with self.subTest(days=days), self.assertRaises(ValueError):
+                generate_dataset(days=days)
+        with self.assertRaises(ValueError):
+            split_dataset([])
+        for rows in ([], [transaction(is_fraud=0)], [transaction(is_fraud="1")]):
+            with self.assertRaises(ValueError):
+                train_model(rows)
+
+    def test_profile_inspects_missing_values_and_types(self):
+        profile = dataset_profile([{"a": 1}, {"a": None, "b": "x"}])
+        self.assertEqual(profile["columns"]["a"]["types"], ["NoneType", "int"])
+        self.assertEqual(profile["columns"]["a"]["missing_or_null"], 1)
+        self.assertEqual(profile["columns"]["b"]["missing_or_null"], 1)
+
+    def test_bank_local_example_and_no_cross_bank_score_dependency(self):
+        rows = generate_dataset(days=5)
+        demo = local_only_demo(rows)
+        self.assertEqual(set(demo["banks"]), {"BANK_A", "BANK_B", "BANK_C"})
+        for bank, payload in demo["banks"].items():
+            self.assertTrue(all(score["institution_id"] == bank for score in payload["scores"]))
+            self.assertEqual(payload["transaction_count"], len(payload["scores"]))
+        bank_a = [row for row in rows if row["institution_id"] == "BANK_A"]
+        isolated = local_only_demo(bank_a)
+        self.assertEqual(isolated["banks"]["BANK_A"], demo["banks"]["BANK_A"])
+        for truth in demo["evaluation_only_ring_truth"]:
+            self.assertIn(truth["local_prediction"], (0, 1))
+
+    def test_clean_cli_regeneration_and_export(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            # -S disables site-packages; -B prevents cache creation. No pip install.
+            completed = subprocess.run([sys.executable, "-B", "-S", str(root / "scripts/train_ml_baseline.py"),
+                                        "--output-dir", directory], cwd=directory,
+                                       capture_output=True, text=True, check=True)
+            report = json.loads(completed.stdout)
+            exported = json.loads((Path(directory) / "evaluation.json").read_text())
+            self.assertEqual(report, exported)
+            rows = json.loads((Path(directory) / "transactions.json").read_text())
+            self.assertEqual(rows, generate_dataset())
+            self.assertEqual(report["dataset_profile"], dataset_profile(rows))
+            self.assertTrue(models_match(json.loads((Path(directory) / "model.json").read_text()), MODEL))
+            demo = json.loads((Path(directory) / "local_baseline_demo.json").read_text())
+            self.assertEqual(sum(b["transaction_count"] for b in demo["banks"].values()),
+                             report["held_out_test"]["rows"])
 
 
 if __name__ == "__main__":

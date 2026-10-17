@@ -77,7 +77,8 @@ Optional outputs (choose a scratch directory outside the repository):
 python scripts/train_ml_baseline.py --output-dir /tmp/fraudmesh-ml
 ```
 
-This writes `transactions.json`, `model.json`, and `evaluation.json`. Do not
+This writes `transactions.json`, `model.json`, `evaluation.json`, and
+`local_baseline_demo.json`. Do not
 commit generated ledgers or treat the evaluation JSON as raw API input.
 `--seed 123` runs a different controlled simulation.
 
@@ -161,3 +162,83 @@ would be needed before generalisation claims. Cross-bank graph detection,
 pseudonymization, shared-signal policies, API, dashboard, and LinuxONE deployment
 belong to the other workstreams. No confidential execution or server performance
 claim is made by this local component.
+
+## Three-bank local-only comparison artifact
+
+The optional `local_baseline_demo.json` scores **only the held-out partition**
+with the embedded deployed baseline. Each bank receives only its own records,
+and inference is passed an explicit feature/association allowlist with no labels.
+The JSON contains `banks.BANK_A/B/C.scores`, counts, and separately named
+`evaluation_only_metrics` and `evaluation_only_ring_truth`. The latter fields
+are evaluation metadata, not model inputs and not permitted collaborative signals.
+This file is a local evaluation artifact, not an agreed `/analyze` API response.
+
+All three simulated banks use the same frozen model trained on generated
+training records; this is **not federated training** or a claim that raw training
+records never entered a shared trainer. Only the scoring views are partitioned.
+The graph teammate can join `transaction_id` against the separately generated
+ledger, construct the agreed permitted signal schema, and compare predictions
+on the same held-out records. No graph detector or collaboration uplift is
+implemented or claimed by this workstream.
+
+| Bank | Test rows | Precision | Recall | F1 | TN | FP | FN | TP |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| BANK_A | 312 | 0.483871 | 0.625000 | 0.545455 | 272 | 16 | 9 | 15 |
+| BANK_B | 279 | 0.868421 | 0.916667 | 0.891892 | 197 | 10 | 6 | 66 |
+| BANK_C | 241 | 0.413793 | 0.500000 | 0.452830 | 200 | 17 | 12 | 12 |
+
+In the held-out seeded rings, **27 of 72 ring transactions receive no local
+alert**. This is transaction-level missed detection, not 27 missed rings or
+proof the graph engine will detect them. The graph teammate must measure that.
+The generated dataset profile inspects actual fields, types, null/missing counts,
+and canonical-JSON SHA-256. Default output has 12 columns with no missing/null
+values. Runtime input validation rejects missing/nonfinite features rather than
+performing implicit imputation. Accuracy is not the headline metric: 712 of 832
+test records are normal, so an always-normal classifier would appear 85.58%
+accurate while having zero suspicious-transaction recall.
+
+## Pre-push audit and deployment handoff
+
+Audit performed after the initial baseline commit; only the existing ML files
+were extended. User-assigned branch remains `sidhesh_teammember2`, overriding the
+generic `feature/ml-baseline` branch name in the team handoff.
+
+- Inspected status/history, tracked file structure, current main and teammate
+  remote trees after fetching. No API, configuration, shared architecture or
+  data-contract implementation was present there at audit time.
+- Preserved the existing trained baseline and root README; changes stay within
+  ML/data ownership. No API/dashboard/privacy/graph changes.
+- Added bank-isolated local scoring/export, inspected schema/profile, exact
+  output-contract tests, and clean-process CLI/export/regeneration checks.
+- Ran the documented evaluation and all 15 tests on **Python 3.12.2, Windows
+  x86-64**, with third-party site packages disabled (`-S`). Also ran them in a
+  new Python 3.12 venv created without pip. No wheels, compiler, private data,
+  credentials or third-party dependencies are required.
+- Checked deterministic regeneration, input validation, label exclusion,
+  train-only preprocessing design, time split and prior-event feature tests.
+- Inspected final/staged diff and explicit file list, ran whitespace checks,
+  and scanned staged files for private keys/credentials. Generated JSON, caches,
+  environments, and external datasets are not staged.
+
+Exact clean-environment commands (use platform-appropriate activation):
+
+```bash
+python3.12 -m venv --without-pip /tmp/fraudmesh-ml-audit
+/tmp/fraudmesh-ml-audit/bin/python -B -S -m unittest discover -s tests -v
+/tmp/fraudmesh-ml-audit/bin/python -B -S scripts/train_ml_baseline.py
+```
+
+On Windows use `<venv>/Scripts/python.exe`. `-B` avoids bytecode caches; `-S`
+proves no site-packages are needed. The printed `embedded_model_matches` uses
+1e-10 relative / 1e-12 absolute tolerance for cross-platform floating-point
+rounding. Classification and split metrics remain measured outputs.
+
+**Explicitly unverified:** execution on the actual LinuxONE s390x server and
+API/privacy/graph integration, because this workstream has no server connection
+and the shared contract is absent. Standard-library-only code removes scientific
+wheel availability as a deployment dependency; it does not constitute an s390x
+execution test. Team lead: run the two commands above on the server and reconcile
+the documented six-field scorer output with your final API before merging.
+No team-level interface agreement or server test is falsely marked as passed.
+The audit follow-up is held locally pending verification against the team's
+shared interface. The previously pushed baseline commit is unaffected.
