@@ -11,7 +11,9 @@ data-contract documents remain absent in fetched remote trees. This version
 implements the provisional raw-input/four-field-output contract supplied directly
 by the team lead. It supersedes the earlier feature-enriched v1 interface.
 No teammates' API, privacy, graph, dashboard or root README files were changed.
-Latest requested branch: `feature/ml-baseline`.
+Canonical ML workstream branch: `feature/ml_baseline` (underscore).
+All future ML commits and pushes use this branch. It preserves the complete
+history from `sidhesh_teammember2` and the former `feature/ml-baseline` branch.
 
 ## Input contract
 
