@@ -32,7 +32,7 @@ Open **http://127.0.0.1:8000**. The page automatically runs Person 2's 21-transa
 | Normal multi-bank chain | 0 | 0 |
 | Complete local cycle | 1 | 0 |
 
-These are computed outcomes of small controlled examples, not general accuracy or improvement claims. The shared scenario contains a legitimate payroll burst that triggers a local fan-out finding: this is a documented false positive. Its combined graph has two structural findings (payroll fan and cross-bank cycle); the multi-bank case view shows the cycle. No ground-truth label enters detection. Use **Local only** to inspect separate bank-visible copies of shared entities. Use the gear button and **Use synthetic demo** for the original authored replay fixture, clearly distinguished from API results.
+These are computed outcomes of small controlled examples, not general accuracy or improvement claims. The shared scenario contains a legitimate payroll burst that triggers a local fan-out finding: this is a documented false positive. Its combined graph has two structural findings (payroll fan and cross-bank cycle); the multi-bank case view shows the cycle. The versioned review policy now combines actual ML scores with supporting structure, timing, and amount-band evidence. No ground-truth label enters detection or prioritization. Use **Local only** to inspect separate bank-visible copies of shared entities. Use the gear button and **Use synthetic demo** for the original authored replay fixture, clearly distinguished from API results.
 
 ## Validate
 
@@ -50,21 +50,23 @@ node --test frontend/tests/*.test.mjs
 
 For Node backend-contract tests, activate the virtual environment first, or set `FRAUDMESH_TEST_PYTHON` to its Python executable. The tests also recognize a repository-local `.venv` automatically. There is no frontend build step.
 
-The integration was verified locally on Windows Python 3.12 with 63 Python tests and 14 Node tests. The repository includes CI for Linux Python 3.12; CI must pass on the merged head; actual LinuxONE execution must be checked separately. Runtime evidence is written to ignored `output/runtime_report.json` and includes the platform where it was actually run.
+The integration was verified locally on Windows Python 3.12 with 71 Python tests and 30 Node tests. The repository includes CI for Linux Python 3.12; CI must pass on the merged head; actual LinuxONE execution must be checked separately. Runtime evidence is written to ignored `output/runtime_report.json` and includes the platform where it was actually run.
 
 ## Interfaces and implementation
 
 - `GET /health`: actual process architecture/Python and explicit synthetic/security status.
-- `GET /demo/scenario?name=common|ring|normal|local`: prepares the synthetic ledger within simulated bank stages and returns only an allowlisted analysis request.
-- `POST /analyze`: accepts `shared_signals` and a documented synthetic scenario ID. It never accepts raw transaction arrays or a tokenization secret.
+- `GET /demo/scenario?name=common|ring|normal|local`: declares response profile `person3.graph.v2` and returns only a scenario reference.
+- `POST /analyze` with that reference performs bank-local ML, HMAC/coarsening, graph detection and ML-informed prioritization on the server.
+- `GET /audit/status`: verifies consistency of the local hash-linked analysis journal.
+- Legacy programmatic signal requests remain supported by explicitly submitting `shared_signals`; `GET /demo/scenario?profile=dashboard.v1` returns that legacy request. It never accepts raw transaction arrays or a tokenization secret.
 - `/docs`: generated API documentation.
 - The same Python process serves approved public dashboard assets at `/`.
 
 [Architecture](docs/architecture.md), [authoritative data contract](docs/data_contract.md), [LinuxONE steps](docs/linuxone.md), and [team integration handoff](docs/integration_handoff.md) describe the boundaries and mappings.
 
-The trained local logistic model remains Person 2's standard-library implementation. Its synthetic held-out test results reproduce precision 0.497041, recall 0.700000, and F1 0.581315 on 832 transactions. See [ML provenance and evaluation](data/README.md). The demo calls this actual scorer; graph alerts use structural rules rather than pretending that the model is a graph neural network. ML scores supply contextual evidence, not the structural alert threshold.
+The trained local logistic model remains Person 2's standard-library implementation. Its synthetic held-out test results reproduce precision 0.497041, recall 0.700000, and F1 0.581315 on 832 transactions. See [ML provenance and evaluation](data/README.md). The demo calls this actual scorer; graph alerts use structural rules rather than pretending that the model is a graph neural network. ML scores do not change structural candidate extraction, but they now directly affect the versioned review-priority policy. This is hand-weighted fusion over a trained transaction model, not a second trained graph model.
 
-Node display scores are the maximum incident transaction scores within the displayed scope. They are not calibrated entity fraud probabilities. Graph findings are structural patterns for investigation, not confirmed criminal activity.
+The new dashboard preserves transaction scores on signal rows and leaves node scores unavailable; it does not invent entity fraud probabilities. Graph findings are structural patterns for investigation, not confirmed criminal activity.
 
 ## Scope and configuration
 
@@ -77,3 +79,13 @@ Optional configuration:
 - `FRAUDMESH_ALLOWED_ORIGINS`: comma-separated frontend origins for a separately served dashboard. Default allows localhost/127.0.0.1 port 4173; the unified server needs no CORS setup.
 
 Runtime requirements pin the four directly used application packages. They match the package versions observed in the supplied LinuxONE installation screenshot, but actual execution remains to be verified on that server. No credentials or environments belong in Git.
+
+## Judge evidence and remaining limits
+
+Person 4's latest work at 15f6d89 is integrated: its 26 original tests plus four real-API bridge tests pass. The proposed person3.graph.v2 scenario-reference contract is now implemented, not just a frontend harness. Saved computed fixtures remain explicitly separate from live API results.
+
+Run `python scripts/evaluate_collaboration.py` for 90 reproducible synthetic scenarios over nine families, including ambiguous legitimate cycles and payroll. In this controlled cohort the ML-only scenario risk screen has precision 0.50/recall 1.00; unfiltered combined structure has precision 0.375/recall 1.00; combined ML-informed triage has precision 0.75/recall 1.00 (10 false-positive scenarios remain). These are scenario-level screening measurements, not transaction-model metrics, ring recall, calibrated probabilities, or real-world accuracy. The fixed policy was not fitted on this cohort. See [critical judge review](docs/judge_review.md) for the protocol and limitations.
+
+Run `python scripts/benchmark_runtime.py` on the actual execution host. On LinuxONE add `--require-s390x`; after starting the service also use `--http-url http://127.0.0.1:8000` to measure loopback requests including journal writes. Reports record architecture, commit, package versions, model/policy versions, and precise measurement scope. A Windows or CI benchmark is never a LinuxONE result. No intrinsic speed advantage or hardware-crypto acceleration is claimed.
+
+Every successful analysis is hash-linked in ignored output/analysis-audit.sqlite3 with counts and input/output digests, not raw rows or graph tokens. It detects inconsistent local edits; truncation or complete rewriting requires an external anchor to detect. This is not an immutable audit service.

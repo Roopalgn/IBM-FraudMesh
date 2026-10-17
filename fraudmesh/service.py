@@ -5,6 +5,7 @@ from collections import defaultdict
 
 from fraudmesh.integration import build_analysis_response
 from fraudmesh.privacy import SHARED_SIGNAL_FIELDS
+from fraudmesh.analysis import analyze_signals
 
 BANK_NAMES = {"bank_a": "Bank A", "bank_b": "Bank B", "bank_c": "Bank C"}
 REASONS = {
@@ -12,14 +13,16 @@ REASONS = {
     "cross_institution_cycle": ("Cross-bank cycle", "A detected directed cycle includes signals contributed by multiple banks."),
     "fan_in": ("Multiple senders", "At least one entity has three or more distinct source neighbours."),
     "fan_out": ("Multiple recipients", "At least one entity has three or more distinct destination neighbours."),
+    "flow_hub": ("Two-sided transfer hub", "The same pseudonymous hub has at least three distinct inbound and outbound counterparties; evidence includes both sides."),
     "rapid_propagation": ("Nearby time buckets", "Supporting UTC hour buckets span at most two hours; exact transfer timing remains local."),
     "cross_institution_structure": ("Multi-bank pattern", "Multiple banks contributed the relationships supporting this pattern."),
+    "ml_informed_priority": ("ML-informed review priority", "A versioned transparent policy combines actual transaction-model scores with structural, timing, and coarse value evidence; not a fraud probability."),
 }
 
 
 def analyze_for_dashboard(signals: list[dict], scenario_id: str = "synthetic-custom") -> dict:
     # A valid empty API snapshot is distinct from the component's nonempty-batch contract.
-    computed = build_analysis_response(signals) if signals else {
+    computed = analyze_signals(signals) if signals else {
         "collaborative_alerts": [], "summary": {"signals_processed": 0, "pseudonymous_entities": 0, "structural_findings": 0},
         "comparison": {"comparison_unit": "structural pattern findings",
                        "local_only": {"finding_count": 0, "findings_by_institution": {}},
@@ -69,5 +72,6 @@ def analyze_for_dashboard(signals: list[dict], scenario_id: str = "synthetic-cus
                                 "retained_local": ["Raw entity and transaction references", "Exact amounts and timestamps", "Evaluation labels"],
                                 "execution_verified": False,
                                 "validation_scope": "Accepted signal schema and value formats only; not a network audit or sender attestation."},
+            "review_queue": computed.get("review_queue"),
             "score_semantics": "Node risk is the maximum incident transaction ML score, not an entity fraud probability.",
             "summary": computed["summary"]}

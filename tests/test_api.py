@@ -19,7 +19,7 @@ class APIIntegrationTests(unittest.TestCase):
         self.client = TestClient(app)
 
     def request(self, name="ring"):
-        response = self.client.get("/demo/scenario", params={"name": name})
+        response = self.client.get("/demo/scenario", params={"name": name, "profile": "dashboard.v1"})
         self.assertEqual(response.status_code, 200)
         return response.json()["analysis_request"]
 
