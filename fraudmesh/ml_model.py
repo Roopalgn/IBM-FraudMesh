@@ -6,13 +6,15 @@ Only FEATURE_NAMES enter the model; labels and identifiers never do.
 from __future__ import annotations
 
 import math
+from collections import defaultdict
+from datetime import datetime, timedelta
 from numbers import Real
 
-FEATURE_NAMES = ("amount", "velocity_1h", "fan_out_1h", "account_age_days")
-MODEL_VERSION = "synthetic-local-logistic-v1"
+FEATURE_NAMES = ("amount", "velocity_1h", "fan_out_1h")
+MODEL_VERSION = "synthetic-local-logistic-v2"
 
 # BEGIN TRAINED MODEL
-MODEL = {'means': [6.519101444142434, 0.26741036558380465, 0.2557142566960691, 5.999343099334726], 'scales': [1.2680255245102228, 0.5508417467650022, 0.5372043732793295, 1.3508786479399093], 'weights': [0.27358469468026186, 0.5681017320939525, 0.011818148215639843, -2.1213615956740166], 'bias': -1.4900468950431665, 'threshold': 0.69}
+MODEL = {'means': [6.519101444142434, 0.26741036558380465, 0.2557142566960691], 'scales': [1.2680255245102228, 0.5508417467650022, 0.5372043732793295], 'weights': [0.5125882543484722, 0.866762062744875, 0.05318610688457971], 'bias': -0.40001247292035685, 'threshold': 0.55}
 # END TRAINED MODEL
 
 
@@ -24,7 +26,7 @@ def sigmoid(value: float) -> float:
 def extract_features(transaction: dict) -> list[float]:
     """Strict, bounded numerical features; never consult a target label.
 
-    Callers compute velocity and fan-out from bank-visible *prior* events.
+    prepare_transactions computes velocity/fan-out from bank-visible prior events.
     Silently substituting zero for missing history would hide integration bugs.
     """
     if not isinstance(transaction, dict):
@@ -55,39 +57,71 @@ def predict_probability(transaction: dict, model: dict | None = None) -> float:
                                       zip(model["weights"], standardized)))
 
 
-def score_transactions(transactions: list[dict]) -> list[dict]:
-    """Return one minimal bank-local result per input, preserving order.
+def prepare_transactions(transactions: list[dict]) -> list[dict]:
+    """Validate raw contract and derive past-only bank-local batch features.
 
-    Invalid batches raise ValueError, including the failing row index. Results
-    deliberately do not echo raw inputs or ground-truth labels. This function
-    does not authorize sharing its output across banks.
+    Batch-local history resets on each call. All timestamps must have an
+    explicit timezone. Sort internally by UTC time, preserving original output
+    order and using original input order to break timestamp ties.
     """
     if not isinstance(transactions, list):
         raise ValueError("transactions must be a list of dicts")
-    results = []
+    times, prepared, seen = [], [], set()
     for index, transaction in enumerate(transactions):
         try:
-            probability = predict_probability(transaction)
-            for field in ("transaction_id", "institution_id"):
+            if not isinstance(transaction, dict):
+                raise ValueError("Each transaction must be a dict")
+            for field in ("transaction_id", "institution_id", "timestamp", "source_entity_token",
+                          "destination_entity_token", "transaction_type", "channel"):
                 if not isinstance(transaction.get(field), str) or not transaction[field].strip():
                     raise ValueError(f"{field} must be a non-empty string")
-        except ValueError as exc:
+            if transaction["institution_id"] not in {"BANK_A", "BANK_B", "BANK_C"}:
+                raise ValueError("institution_id must be BANK_A, BANK_B or BANK_C")
+            if transaction["transaction_id"] in seen:
+                raise ValueError("duplicate transaction_id")
+            seen.add(transaction["transaction_id"])
+            timestamp = datetime.fromisoformat(transaction["timestamp"].replace("Z", "+00:00"))
+            if timestamp.utcoffset() is None:
+                raise ValueError("timestamp must include a timezone")
+            # Validate amount with the same strict numerical policy as training.
+            extract_features({"amount": transaction.get("amount"), "velocity_1h": 0, "fan_out_1h": 0})
+            times.append(timestamp)
+            prepared.append(dict(transaction))
+        except (ValueError, OverflowError) as exc:
             raise ValueError(f"transactions[{index}]: {exc}") from exc
+    history = defaultdict(list)
+    for index in sorted(range(len(prepared)), key=lambda i: (times[i], i)):
+        row, timestamp = prepared[index], times[index]
+        key = (row["institution_id"], row["source_entity_token"])
+        prior = [(time, target) for time, target in history[key]
+                 if timedelta(0) <= timestamp - time < timedelta(hours=1)]
+        row["velocity_1h"] = len(prior)
+        row["fan_out_1h"] = len({target for _, target in prior})
+        history[key] = prior + [(timestamp, row["destination_entity_token"])]
+    return prepared
+
+
+def score_transactions(transactions: list[dict]) -> list[dict]:
+    """Score raw provisional-contract records without labels or graph detection.
+
+    Return exactly four fields per row. Invalid batches raise indexed ValueError.
+    Scores are uncalibrated model outputs, not verified fraud probabilities.
+    """
+    results = []
+    for transaction in prepare_transactions(transactions):
+        probability = predict_probability(transaction)
         reasons = []
         if transaction["velocity_1h"] >= 3:
             reasons.append("elevated_prior_transfer_velocity")
         if transaction["fan_out_1h"] >= 3:
             reasons.append("multiple_prior_recipients")
-        if transaction["account_age_days"] < 30:
-            reasons.append("recently_opened_account")
         if transaction["amount"] >= 5000:
             reasons.append("large_transfer_amount")
         results.append({
             "transaction_id": transaction["transaction_id"],
-            "institution_id": transaction["institution_id"],
-            "local_risk_score": round(probability, 8),
-            "prediction": int(probability >= MODEL["threshold"]),
+            "risk_score": round(probability, 8),
+            "risk_level": ("high" if probability >= MODEL["threshold"] else
+                           "medium" if probability >= MODEL["threshold"] / 2 else "low"),
             "reason_codes": reasons,
-            "model_version": MODEL_VERSION,
         })
     return results

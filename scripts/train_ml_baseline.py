@@ -19,7 +19,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from fraudmesh.ml_model import (FEATURE_NAMES, MODEL, MODEL_VERSION, extract_features,
-                                predict_probability, sigmoid, score_transactions)
+                                predict_probability, sigmoid, score_transactions, prepare_transactions)
 
 SEED = 20261017
 
@@ -84,7 +84,15 @@ def generate_dataset(seed: int = SEED, days: int = 40) -> list[dict]:
             event["transaction_id"] = f"SYN-{day:03d}-{len(rows):06d}"
             rows.append(event)
             history[key] = recent + [(timestamp, event["destination_account_id"])]
-    return rows
+    # Map the original synthetic ledger into the newly agreed raw-input contract.
+    raw = []
+    for row in rows:
+        raw.append({"transaction_id": row["transaction_id"], "institution_id": row["institution_id"],
+                    "timestamp": row["timestamp"], "source_entity_token": row["source_account_id"],
+                    "destination_entity_token": row["destination_account_id"], "amount": row["amount"],
+                    "transaction_type": "transfer", "channel": "online",
+                    "fraud_label": row["is_fraud"], "scenario_id": row["scenario_id"]})
+    return prepare_transactions(raw)
 
 
 def split_dataset(rows):
@@ -102,10 +110,10 @@ def split_dataset(rows):
 def train_model(rows, epochs=350):
     if not rows:
         raise ValueError("Training requires non-empty rows")
-    if any(type(row.get("is_fraud")) is not int or row["is_fraud"] not in (0, 1) for row in rows):
+    if any(type(row.get("fraud_label")) is not int or row["fraud_label"] not in (0, 1) for row in rows):
         raise ValueError("Training labels must be integer 0 or 1")
     x = [extract_features(row) for row in rows]
-    y = [row["is_fraud"] for row in rows]
+    y = [row["fraud_label"] for row in rows]
     n, width = len(x), len(FEATURE_NAMES)
     means = [sum(row[j] for row in x) / n for j in range(width)]
     scales = [max(1e-9, math.sqrt(sum((row[j] - means[j]) ** 2 for row in x) / n))
@@ -134,7 +142,7 @@ def evaluate(rows, model):
     tn = fp = fn = tp = 0
     for row in rows:
         prediction = predict_probability(row, model) >= model["threshold"]
-        target = row["is_fraud"]
+        target = row["fraud_label"]
         tn += int(not target and not prediction)
         fp += int(not target and prediction)
         fn += int(target and not prediction)
@@ -178,7 +186,9 @@ def local_only_demo(rows):
     for bank in sorted({row["institution_id"] for row in rows}):
         local_rows = [row for row in rows if row["institution_id"] == bank]
         inference_rows = [{key: row[key] for key in
-                           ("transaction_id", "institution_id", *FEATURE_NAMES)} for row in local_rows]
+                           ("transaction_id", "institution_id", "timestamp", "source_entity_token",
+                            "destination_entity_token", "amount", "transaction_type", "channel")}
+                          for row in local_rows]
         scores = score_transactions(inference_rows)
         banks[bank] = {"transaction_count": len(local_rows), "scores": scores,
                        "evaluation_only_metrics": evaluate(local_rows, MODEL)}
@@ -187,8 +197,8 @@ def local_only_demo(rows):
     for row in rows:
         if row["scenario_id"].endswith("-ring"):
             truth.append({"transaction_id": row["transaction_id"], "scenario_id": row["scenario_id"],
-                          "institution_id": row["institution_id"], "is_fraud": row["is_fraud"],
-                          "local_prediction": scores_by_id[row["transaction_id"]]["prediction"]})
+                          "institution_id": row["institution_id"], "fraud_label": row["fraud_label"],
+                          "local_prediction": int(scores_by_id[row["transaction_id"]]["risk_level"] == "high")})
     return {"data_kind": "synthetic; embedded local baseline only",
             "model_version": MODEL_VERSION, "banks": banks,
             "evaluation_only_ring_truth": truth,
@@ -208,7 +218,7 @@ def run(seed=SEED):
     report = {"data_kind": "synthetic controlled-demo measurements; not real-world validation",
               "seed": seed, "split_method": "whole-day chronological 60/20/20; disjoint entities by day",
               "features": list(FEATURE_NAMES), "epochs": 350,
-              "training": {"rows": len(train), "positives": sum(r["is_fraud"] for r in train)},
+              "training": {"rows": len(train), "positives": sum(r["fraud_label"] for r in train)},
               "threshold_selection": "maximum validation F1, higher threshold breaks ties",
               "threshold": model["threshold"], "validation": evaluate(validation, model),
               "held_out_test": evaluate(test, model),

@@ -1,244 +1,194 @@
-# ML baseline and synthetic dataset
+# FraudMesh ML baseline: provisional team contract v2
 
-This workstream implements a bank-local transaction-risk baseline, not the
-cross-bank graph detector. All measurements below are **controlled-demo
-measurements on synthetic data**, not evidence of real-world generalisation.
+This component is a trained, bank-local logistic-regression baseline. All data
+and metrics are **synthetic controlled-demo measurements**, not real-bank results.
+No graph detector, API, dashboard or confidential execution is implemented here.
 
-## Repository inspection and contract status
+## Inspected context and ownership
 
-At implementation time `README.md` contained only `# IBM-FraudMesh`.
-`docs/architecture.md` and `docs/data_contract.md` were missing. They belong to
-other workstreams and were not created or overwritten. The function signature
-from the handoff is implemented; the field-level interface below is provisional
-until integration agrees on the shared contract.
+The initial repository contained a one-line README. The shared architecture and
+data-contract documents remain absent in fetched remote trees. This version
+implements the provisional raw-input/four-field-output contract supplied directly
+by the team lead. It supersedes the earlier feature-enriched v1 interface.
+No teammates' API, privacy, graph, dashboard or root README files were changed.
+Latest requested branch: `feature/ml-baseline`.
 
-## Dataset decision, provenance, schema and terms
+## Input contract
 
-Candidate considered: IBM AML-Data, https://github.com/IBM/AML-Data . Its published
-documentation describes synthetic transactions with laundering labels and a
-CDLA-Sharing-1.0 data license distinct from its Apache-2.0 repository license.
-No candidate CSV was downloaded or inspected for this implementation, so its
-exact available schema, usable relationships and download terms were not
-verified here. It is not represented as our dataset. To avoid an access/schema
-dependency, the implementation uses an original deterministic synthetic generator.
-No external rows, customer records, or restricted datasets are included. The
-generator's code and generated records are original project material; no
-third-party dataset license is asserted or inherited. This branch does not add
-or change the repository's project-wide license; the owner decides that policy.
-
-Generator: `scripts/train_ml_baseline.py::generate_dataset(seed=20261017)`.
-It produces 4,160 transactions across 40 synthetic days, three simulated banks,
-normal payments, legitimate business bursts, and suspicious scenarios. Every day
-has a distinct nine-transfer A -> B -> C -> A ring plus six suspicious burst
-transfers. Entities are disjoint across days. One source account has a consistent
-synthetic age within its day. The bank-partitioned raw ledger is for local use;
-it must not be forwarded directly as collaborative shared signals.
-
-| Field | Type / meaning | Prediction use |
-|---|---|---|
-| transaction_id | Unique synthetic transaction reference | Output association only |
-| institution_id | Source simulated bank: BANK_A/B/C | Output association / history partition only |
-| destination_institution_id | Destination bank | Graph workstream context, not model input |
-| source_account_id | Bank-qualified synthetic source | Local history key, not model input |
-| destination_account_id | Bank-qualified synthetic destination | Local distinct-recipient count, not model input |
-| timestamp | UTC ISO timestamp | Local history ordering, not model input |
-| amount | Non-negative value in a single synthetic currency | Numerical input |
-| velocity_1h | Number of source's prior outgoing transfers in the previous hour at that bank | Numerical input |
-| fan_out_1h | Distinct destinations among those prior transfers | Numerical input |
-| account_age_days | Non-negative synthetic age in days | Numerical input |
-| is_fraud | 0 for normal, 1 for seeded suspicious scenario | Training/evaluation target ONLY |
-| scenario_id | Synthetic scenario membership | Evaluation/demo metadata ONLY |
-
-History excludes the current payment and all future payments. Ties are processed
-in stable generator order. The one-hour window includes events at the current
-timestamp already processed, and excludes events exactly one hour old. These
-features are **bank-local**, not central graph features. Suspected ring labels do
-not mean a bank can necessarily detect the ring from its local features.
-
-## Run / reproduce (from repository root)
-
-Requires Python 3.12 or later; both training and inference use **standard library
-only**, with no mandatory NumPy, pandas, scikit-learn or SciPy. No package install
-or training is needed to import the scorer. No training occurs at import time.
-
-```bash
-python scripts/train_ml_baseline.py
-python -m unittest discover -s tests -v
-```
-
-The first command regenerates data, fits class-balanced L2 logistic regression
-with 350 deterministic full-batch gradient steps, selects the threshold on
-validation F1, prints the report, and checks whether it reproduces the embedded
-model. It performs no writes unless an option is supplied.
-
-Optional outputs (choose a scratch directory outside the repository):
-
-```bash
-python scripts/train_ml_baseline.py --output-dir /tmp/fraudmesh-ml
-```
-
-This writes `transactions.json`, `model.json`, `evaluation.json`, and
-`local_baseline_demo.json`. Do not
-commit generated ledgers or treat the evaluation JSON as raw API input.
-`--seed 123` runs a different controlled simulation.
-
-To intentionally replace the deployed coefficients after retraining:
-
-```bash
-python scripts/train_ml_baseline.py --write-model
-```
-
-This changes only the marked model block in `fraudmesh/ml_model.py`. Review that
-diff and rerun tests; do not use a different seed without updating the documented
-results. Tiny floating-point differences across platforms are possible.
-
-## Actual baseline results
-
-Seed: **20261017**. Split: whole-day chronological **60/20/20**, with disjoint
-entities across partitions. Days 1-24 train (2,496 rows, 360 positives), days
-25-32 validate (832 rows, 120 positives), days 33-40 test (832 rows, 120 positives).
-Means/scales are fit on training only. The threshold is chosen on validation only
-from 0.05 through 0.95 in 0.01 steps; highest validation F1 wins, with the higher
-threshold breaking ties. Selected threshold: **0.69**. Test labels never enter
-training or threshold selection.
-
-| Partition | Precision | Recall | F1 | TN | FP | FN | TP |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Validation | 0.841667 | 0.841667 | 0.841667 | 693 | 19 | 19 | 101 |
-| Held-out test | 0.683824 | 0.775000 | 0.726563 | 669 | 43 | 27 | 93 |
-
-Held-out confusion matrix: `[[669, 43], [27, 93]]`, with rows = actual [0,1]
-and columns = predicted [0,1]. These are local transaction metrics, **not ring
-recall, collaboration uplift, calibrated probabilities, or LinuxONE benchmarks**.
-
-## Integration: score_transactions
+`score_transactions(transactions: list[dict]) -> list[dict]`
 
 ```python
 from fraudmesh.ml_model import score_transactions
 
-rows = [{
-    "transaction_id": "T1", "institution_id": "BANK_A",
-    "amount": 100.0, "velocity_1h": 0, "fan_out_1h": 0,
-    "account_age_days": 1000,
-}]
-results = score_transactions(rows)
-assert results[0]["transaction_id"] == "T1"
-assert 0 <= results[0]["local_risk_score"] <= 1
+result = score_transactions([{
+    'transaction_id': 'TX-A-001',
+    'institution_id': 'BANK_A',
+    'timestamp': '2026-10-17T10:30:00Z',
+    'source_entity_token': 'entity_001',
+    'destination_entity_token': 'entity_007',
+    'amount': 12500.0,
+    'transaction_type': 'transfer',
+    'channel': 'online',
+    'fraud_label': 0,
+}])
 ```
 
-Each result contains `transaction_id`, `institution_id`, `local_risk_score`,
-`prediction` (0/1), `reason_codes` (list of strings), and `model_version`.
-Order is preserved. Inputs are not mutated or echoed. Labels and account IDs are
-never copied into results. Transaction IDs may themselves be local-sensitive;
-the privacy teammate must select/tokenize allowed fields before sharing results.
+| Field | Required type and handling |
+|---|---|
+| transaction_id | Nonempty string, unique within a batch; retained in output |
+| institution_id | BANK_A, BANK_B or BANK_C; bank-local history partition |
+| timestamp | ISO-8601 string with explicit UTC/offset timezone |
+| source_entity_token | Nonempty string; local history key, never a model feature |
+| destination_entity_token | Nonempty string; distinct-recipient history only |
+| amount | Finite, non-negative number; bool and numeric string rejected |
+| transaction_type | Nonempty string; validated context, not a model feature |
+| channel | Nonempty string; validated context, not a model feature |
+| fraud_label | Optional ground truth, ignored by inference regardless of value |
 
-All four feature fields are required finite non-negative numbers (bools and
-numeric strings are rejected), and `fan_out_1h <= velocity_1h`. Both association
-IDs must be non-empty strings. `[]` returns `[]`. A malformed batch raises
-`ValueError` with its failing row index; it does not silently impute missing
-history. The API layer should translate validation errors to its agreed client
-error response. Unknown fields are ignored and never become model features.
+Unknown fields are ignored by public scoring. Caller-provided velocity/fan-out
+are **overwritten by derived history**, preventing accidental injected features.
+No account age is required or used. Tokens are opaque synthetic identifiers;
+the ML module does not implement pseudonymization or authorize shared signals.
 
-Feature transform: `log1p(min(value, 1e12))`, followed by train-only z-scaling and
-the embedded learned logistic model. The score is a bounded model risk score,
-not a calibrated fraud probability. Reason codes are observed contextual flags,
-not causal explanations or exact model contributions; flags can appear on normal
-transactions too. Thresholding uses the unrounded score; the returned score is
-rounded to eight decimals.
+`[]` returns `[]`. Invalid rows raise `ValueError` naming the original row index.
+A duplicate transaction ID, unknown institution, naive/invalid timestamp, or
+missing field rejects the batch. No silent numerical imputation is performed.
+Inputs are not mutated and outputs preserve input order.
 
-## Tests and limitations
+## Model and past-only feature processing
 
-Tests cover empty/malformed batches, missing/nonfinite/negative features,
-inconsistent counts, normal/suspicious examples, large inputs, deterministic
-order, no input mutation, label/identifier leakage, seeded rings, chronological
-splits, independent reconstruction of past-only features, and retraining
-reproduction of the embedded model.
+Trained class-balanced L2 logistic regression, 350 full-batch gradient steps,
+implemented entirely with Python standard library. This is a trained model,
+not a heuristic fallback. Reason codes are contextual rules, not model attributions.
 
-The generator intentionally creates learnable patterns (including account age)
-and legitimate hard negatives. A model trained and tested on the same generator
-can learn its assumptions; results do not establish real-bank effectiveness.
-All partitions contain both classes. Fresh-scenario and external-data evaluation
-would be needed before generalisation claims. Cross-bank graph detection,
-pseudonymization, shared-signal policies, API, dashboard, and LinuxONE deployment
-belong to the other workstreams. No confidential execution or server performance
-claim is made by this local component.
+Model inputs are amount, prior outgoing transaction count in one hour, and
+prior distinct-recipient count in one hour. Events sort internally by absolute
+time; input order breaks timestamp ties. State is partitioned by institution
+and source token. The current event and future events are excluded; an event
+exactly one hour old is excluded. `log1p(min(value, 1e12))` then training-only
+mean/scale transforms the three features. Labels, token strings, scenario IDs,
+transaction IDs, type, channel and account age are not numerical model inputs.
 
-## Three-bank local-only comparison artifact
+**Batch-local history resets on every call.** For replay, pass the cumulative
+bank-local history and select new outputs by transaction_id, or build a stateful
+adapter in integration. Scoring one record per call loses velocity context.
+All simulated banks use the same model trained on synthetic training records;
+this is not federated training or separate privately trained bank models.
 
-The optional `local_baseline_demo.json` scores **only the held-out partition**
-with the embedded deployed baseline. Each bank receives only its own records,
-and inference is passed an explicit feature/association allowlist with no labels.
-The JSON contains `banks.BANK_A/B/C.scores`, counts, and separately named
-`evaluation_only_metrics` and `evaluation_only_ring_truth`. The latter fields
-are evaluation metadata, not model inputs and not permitted collaborative signals.
-This file is a local evaluation artifact, not an agreed `/analyze` API response.
+## Output contract
 
-All three simulated banks use the same frozen model trained on generated
-training records; this is **not federated training** or a claim that raw training
-records never entered a shared trainer. Only the scoring views are partitioned.
-The graph teammate can join `transaction_id` against the separately generated
-ledger, construct the agreed permitted signal schema, and compare predictions
-on the same held-out records. No graph detector or collaboration uplift is
-implemented or claimed by this workstream.
+Each output has exactly:
 
-| Bank | Test rows | Precision | Recall | F1 | TN | FP | FN | TP |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| BANK_A | 312 | 0.483871 | 0.625000 | 0.545455 | 272 | 16 | 9 | 15 |
-| BANK_B | 279 | 0.868421 | 0.916667 | 0.891892 | 197 | 10 | 6 | 66 |
-| BANK_C | 241 | 0.413793 | 0.500000 | 0.452830 | 200 | 17 | 12 | 12 |
+```text
+transaction_id: string
+risk_score: float in [0,1]
+risk_level: 'low' | 'medium' | 'high'
+reason_codes: list[string]
+```
 
-In the held-out seeded rings, **27 of 72 ring transactions receive no local
-alert**. This is transaction-level missed detection, not 27 missed rings or
-proof the graph engine will detect them. The graph teammate must measure that.
-The generated dataset profile inspects actual fields, types, null/missing counts,
-and canonical-JSON SHA-256. Default output has 12 columns with no missing/null
-values. Runtime input validation rejects missing/nonfinite features rather than
-performing implicit imputation. Accuracy is not the headline metric: 712 of 832
-test records are normal, so an always-normal classifier would appear 85.58%
-accurate while having zero suspicious-transaction recall.
+The score is an **uncalibrated model risk score**, not a validated fraud probability.
+High: unrounded score >= 0.55 (validation-selected binary decision threshold).
+Medium: 0.275 <= score < 0.55. Low: score < 0.275. Medium is a display band only,
+not a separately optimized decision. Returned scores round to eight decimals;
+category comparisons use the unrounded value.
 
-## Pre-push audit and deployment handoff
+Reason codes describe observed signals: `elevated_prior_transfer_velocity`
+(prior count >= 3), `multiple_prior_recipients` (prior unique count >= 3), and
+`large_transfer_amount` (amount >= 5000). Normal transfers can have these flags.
+No label, institution, original record or entity token is echoed in outputs.
+Transaction IDs may still be sensitive: sharing requires the privacy module's
+explicit allowlist and reference/token policy. This module does not emit shared
+signals or call the graph detector.
 
-Audit performed after the initial baseline commit; only the existing ML files
-were extended. User-assigned branch remains `sidhesh_teammember2`, overriding the
-generic `feature/ml-baseline` branch name in the team handoff.
+## Dataset provenance, terms and actual schema
 
-- Inspected status/history, tracked file structure, current main and teammate
-  remote trees after fetching. No API, configuration, shared architecture or
-  data-contract implementation was present there at audit time.
-- Preserved the existing trained baseline and root README; changes stay within
-  ML/data ownership. No API/dashboard/privacy/graph changes.
-- Added bank-isolated local scoring/export, inspected schema/profile, exact
-  output-contract tests, and clean-process CLI/export/regeneration checks.
-- Ran the documented evaluation and all 15 tests on **Python 3.12.2, Windows
-  x86-64**, with third-party site packages disabled (`-S`). Also ran them in a
-  new Python 3.12 venv created without pip. No wheels, compiler, private data,
-  credentials or third-party dependencies are required.
-- Checked deterministic regeneration, input validation, label exclusion,
-  train-only preprocessing design, time split and prior-event feature tests.
-- Inspected final/staged diff and explicit file list, ran whitespace checks,
-  and scanned staged files for private keys/credentials. Generated JSON, caches,
-  environments, and external datasets are not staged.
+Candidate considered: https://github.com/IBM/AML-Data . Its published description
+identifies synthetic AML labels and CDLA-Sharing-1.0 data terms distinct from the
+repository's Apache-2.0 license. No candidate CSV was downloaded or inspected;
+its usable schema/access was not verified here, and it is not our dataset.
 
-Exact clean-environment commands (use platform-appropriate activation):
+Instead, `generate_dataset(seed=20261017)` creates original deterministic
+synthetic records. No real customers, external rows or private data are included.
+No third-party dataset license is inherited or asserted; repository-wide project
+licensing is for the owner to decide. This branch adds no project-wide license.
+
+40 independent synthetic days, 4,160 transfers, three banks. Each day contains
+80 background transfers, nine legitimate business transfers, nine transfers in
+a three-bank A -> B -> C -> A ring, and six suspicious burst transfers. Source
+entities are disjoint across days. Ring endpoint tokens connect consistently.
+These are opaque synthetic tokens, not proof of HMAC/privacy implementation.
+
+Actual generated fields: the nine contract fields above plus `scenario_id`
+(string, evaluation metadata), `velocity_1h` (int), `fan_out_1h` (int). All generated
+values are present/non-null. Amount is float, fraud_label is int, remaining
+contract fields are strings. The export profiles actual types/null counts and
+canonical-JSON SHA-256. The enriched ledger is local evaluation material, not an
+approved collaborative signal payload. Labels and scenarios must remain outside
+the inference inputs; the demo exporter explicitly strips them before scoring.
+
+## Reproduce with no third-party dependencies
+
+From repository root, using Python 3.12:
 
 ```bash
-python3.12 -m venv --without-pip /tmp/fraudmesh-ml-audit
-/tmp/fraudmesh-ml-audit/bin/python -B -S -m unittest discover -s tests -v
-/tmp/fraudmesh-ml-audit/bin/python -B -S scripts/train_ml_baseline.py
+python -B -S -m unittest discover -s tests -v
+python -B -S scripts/train_ml_baseline.py
+python -B -S scripts/train_ml_baseline.py --output-dir /tmp/fraudmesh-ml
 ```
 
-On Windows use `<venv>/Scripts/python.exe`. `-B` avoids bytecode caches; `-S`
-proves no site-packages are needed. The printed `embedded_model_matches` uses
-1e-10 relative / 1e-12 absolute tolerance for cross-platform floating-point
-rounding. Classification and split metrics remain measured outputs.
+Use a scratch output directory outside the repository (adapt `/tmp` on Windows).
+No pip install is required for inference **or training**. The default evaluation
+command performs no writes. Optional export writes transactions.json, model.json,
+evaluation.json and local_baseline_demo.json. The latter partitions held-out
+records into BANK_A/B/C scores with separately marked evaluation-only metrics
+and ring truth, enabling the graph teammate to compare the same transaction IDs.
+It is not an `/analyze` API schema and must not be transmitted as shared signals.
 
-**Explicitly unverified:** execution on the actual LinuxONE s390x server and
-API/privacy/graph integration, because this workstream has no server connection
-and the shared contract is absent. Standard-library-only code removes scientific
-wheel availability as a deployment dependency; it does not constitute an s390x
-execution test. Team lead: run the two commands above on the server and reconcile
-the documented six-field scorer output with your final API before merging.
-No team-level interface agreement or server test is falsely marked as passed.
-The audit follow-up is held locally pending verification against the team's
-shared interface. The previously pushed baseline commit is unaffected.
+`--seed 123` evaluates another controlled simulation. `--write-model` intentionally
+updates only the embedded coefficient block in fraudmesh/ml_model.py; review its
+diff, rerun tests and update documentation before deployment. Without that option,
+exported demo scores use the deployed embedded model, while evaluation.json and
+model.json describe the freshly trained model. They match for the default seed.
+Cross-platform coefficient reproduction permits 1e-10 relative/1e-12 absolute
+rounding tolerance; it does not permit materially different models.
+
+## Measured v2 results (supersede v1)
+
+Seed 20261017; chronological whole-day 60/20/20 split with disjoint entities.
+Train: 2,496 rows/360 positive; validation: 832/120; test: 832/120. Preprocessing
+fits training only. Threshold maximizes validation F1 over 0.05-0.95 in steps of
+0.01; the higher threshold breaks ties. Test labels never select the threshold.
+
+| Partition | Precision | Recall | F1 | TN | FP | FN | TP |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Validation | 0.503030 | 0.691667 | 0.582456 | 630 | 82 | 37 | 83 |
+| Held-out test | 0.497041 | 0.700000 | 0.581315 | 627 | 85 | 36 | 84 |
+
+Confusion matrix `[[627,85],[36,84]]`: rows actual [0,1], columns predicted [0,1].
+An always-normal classifier would appear 85.58% accurate with zero positive
+recall, so accuracy alone is misleading. The v1 results used an account-age
+feature unavailable in the supplied contract and must not be quoted for v2.
+
+## Audit, compatibility and remaining limitations
+
+14 executed tests pass in a fresh **Python 3.12.2 Windows x86-64 venv without pip**,
+with site-packages disabled. Tests cover the supplied example/exact output shape,
+empty and malformed batches, all required fields, label/feature injection,
+normal/suspicious examples, order/determinism/no mutation, timezone/window
+boundaries, independent past-only history reconstruction, three-bank isolation,
+ring relationships, chronological splits, regenerated exports and metrics from
+the public raw-input scorer matching held-out evaluation.
+
+Only the four owned ML/data files change. Final/staged diffs, whitespace, file
+scope, generated artifacts and credential patterns are inspected before commit.
+No private datasets, caches, virtual environments or credentials are committed.
+
+No scientific wheels or compiler are needed on s390x. Actual LinuxONE execution
+is **not tested in this chat**; team lead should run the same two test/evaluation
+commands there. API/graph integration remains for the team lead and graph member.
+The provisional field contract is implemented; no unavailable field is invented.
+
+Synthetic train/test share generator assumptions, so metrics do not establish
+real-world generalisation, calibrated probabilities, ring-level detection or
+collaborative improvement. No fraud ring detector is implemented in this module.
+Partitioning is simulated and is not a security boundary against a VM administrator.
