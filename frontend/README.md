@@ -1,56 +1,55 @@
-# FraudMesh — Person 4: Dashboard & Demo
+# FraudMesh investigator dashboard
 
-A dependency-free investigator dashboard for the team's three-bank experiment. All bundled entities, local flags, risk scores and case outcomes are **synthetic, pre-authored fixtures**. No classifier or fraud detector runs in this frontend.
+The existing dependency-free HTML/CSS/JavaScript frontend, continued on `feat/dashboard` from reviewed commit `71f5866`. No framework migration. Only `frontend/` is changed.
 
-## Run locally
+## Run from a teammate's checkout
 
-Requires Node.js 18 or newer. No package installation or build step. On Windows, double-click `START-DASHBOARD.cmd`; it also recognizes the bundled Codex Node runtime on this computer. Keep the terminal open while using the dashboard.
+Requires Node.js 18 or newer; no npm install or build is needed.
 
-```powershell
-cd 'D:\IBM Z\IBM-FraudMesh\frontend'
+```sh
+cd frontend
 node server.mjs
 ```
 
-Open http://localhost:4173. From a teammate's checkout, change into its `frontend` directory instead. `npm start` is equivalent. If Node is unavailable, `python -m http.server 4173 --bind 127.0.0.1` from this directory also serves the dashboard. Do not open `index.html` directly: modules and the fixture require HTTP.
+Open http://localhost:4173 and keep the terminal running. `npm start` is equivalent. Windows users can double-click `START-DASHBOARD.cmd`; its Codex-runtime fallback is optional and machine-specific, while `node server.mjs` is portable. Alternatively serve this directory with `python -m http.server 4173 --bind 127.0.0.1`. Direct `file://` opening is unsupported.
 
-## What is implemented
+## Choose a result source
 
-- Three institution cards, entity focus, local finding details and local risk scores.
-- SVG graph with keyboard-selectable entities and zoom controls.
-- Local-only versus collaborative graph views; six-event replay with play, pause, reset and single step.
-- Case evidence with reason codes and relationship table; data-sharing boundary and presentation trail.
-- Case export as JSON containing the current mode, visible evidence, provenance and limitations.
-- API connection dialog using `GET /health`, `GET /demo/scenario`, `POST /analyze`.
-- Strict response validation, escaped backend text, responsive layout and reduced-motion support.
+- **Authored synthetic replay:** existing six-event fallback. Outcomes are pre-authored. Play, pause, reset, step and evidence-safe exports remain available.
+- **Computed synthetic ring:** saved output from Person 3's unchanged corrected code at `34822ed09e167a810abc29cdde5104b569e84b72`. Three signals, three entities, zero local structural findings and one combined cycle.
+- **Computed unrelated activity:** three unrelated signals, six entities, no structural findings.
+- **Computed single-bank cycle:** all three cycle edges contributed by Bank A. One local finding and one combined finding, demonstrating that local detection is not forced to zero.
+- **API:** configurable gear-dialog connection. Snapshot only; no unsupported replay. Synthetic provenance remains visible. Errors retain previous data and never silently load the fallback.
 
-## Handoff to the team lead
+Computed fixture provenance and source hashes are in `public/integration/*.json`. `scripts/generate-integration-fixtures.py` runs the pinned graph code in a temporary directory; it does not modify that code or export raw local ledgers or linkage keys. Optional regeneration from the repository root: install NetworkX 3.4.2 in a separate Python environment, fetch the graph branch, then run `python frontend/scripts/generate-integration-fixtures.py --repo .`.
 
-The dashboard lives entirely within `frontend/` in the shared repository. No Python/backend files or shared root contracts were modified. Start the API separately and use the gear icon to connect. The **proposed frontend contract** is documented in `docs/data_contract.md`; compare it with your team's actual payload and adapt the boundary in `src/model.js` or the backend response. The repository contained only its root README when this branch was prepared, so compatibility with the eventual backend implementation remains to be confirmed.
+## Tests
 
-Live API loading is a snapshot. Replay is disabled for API data so the UI does not fabricate event timing. Failed connections retain the current displayed data. The demo is always recoverable with **Use synthetic demo**.
+From `frontend/`:
 
-API CORS must permit the actual dashboard origin, such as `http://localhost:4173`, and JSON POST requests. The static server binds loopback only. For LinuxONE deployment, the lead can serve these static files through the team's existing web server; change the API base URL in the dialog. An HTTPS dashboard needs an HTTPS API. Do not enter SSH keys or secrets into this frontend.
-
-## Verify
-
-```powershell
-node --test tests/model.test.mjs
+```sh
+node --test tests/*.test.mjs
+node --check src/app.js
 ```
 
-The tests check the actual fixture's cross-bank cycle, local-only fragments, replay evidence timing, raw-field exclusions, current-view exports and invalid backend responses.
+26 tests passed: the original 10 plus response adaptation, memberships, corrected local structures, evidence references, provenance, privacy limits, exports, request safety, errors, timeouts and cancellation.
 
-Optional integration harness (synthetic response, **not a real detector**):
+## API integration
 
-```powershell
+Person 1 still owns the final endpoint contract. `docs/data_contract.md` gives the explicit `person3.graph.v2` mapping and the proposed scenario-reference envelope; approval and live integration remain pending. The response is Person 3's actual corrected component response, not the original frontend schema. No compatibility guessing is done.
+
+For frontend wiring tests only, run a second terminal:
+
+```sh
 node tests/mock-api.mjs
 ```
 
-With the dashboard running, open the gear icon, set `http://127.0.0.1:4180` and connect. The header should become **API · synthetic data** and replay controls should disable. Restore the fixture afterward.
+Connect using `http://127.0.0.1:4180/ring`. The UI explicitly labels this **API test harness**, not a live detector. Test suffixes: `/normal`, `/multiple`, `/empty`, `/optional`, `/malformed`, `/invalid-json`, `/unavailable`, `/unsafe-scenario`. Multiple-case/empty/error variants are test-only mutations, not computed evaluation results. CORS permits only the two local dashboard origins on port 4173.
 
-See `docs/demo_script.md` for the presentation sequence and `docs/verification.md` for completed checks.
+## Representation and honest scope
 
-## Scope of privacy claims
+One entity can appear in several institutions' contributed relationships. Memberships are preserved and validated against incident edges; they do not establish exclusive ownership. Local mode shows the selected bank's contributed signals. It is not authentication or access control, because the browser receives the permitted response.
 
-The browser receives the full permitted graph. The local-only toggle hides cross-bank edges for comparison; it is not a bank authorization boundary. The export projection excludes unknown fields, but that does not prove the upstream API never transmitted them. The bundled fixture contains no raw transaction records. Backend `raw_rows_shared` and `execution_verified` values are reported claims, not independently audited or attested by the UI. Pseudonyms remain linkable. No production authentication, persistence, secure key exchange or confidential execution is implemented here.
+Transaction-risk flags, local structural findings and combined cases are separate units. ML flag counts and node scores are unavailable when not supplied. Per-signal scores are shown only on evidence rows, without node aggregation or probability claims. They do not drive this graph detector's severity. Hour buckets do not establish event-level detection timing.
 
-There are no CDN dependencies, remote fonts, analytics or image requests. The fixture runs offline once served. No dataset or third-party asset was downloaded.
+The corrected service reports validation scope and limitations, not an audited count of raw rows shared/received. Those values stay unavailable. LinuxONE deployment, Secure Execution, remote attestation and production privacy guarantees remain unverified. See `docs/verification-current.md`, `docs/demo_script.md` and `docs/person1_handoff.md`.

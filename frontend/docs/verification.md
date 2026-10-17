@@ -1,5 +1,7 @@
 # Verification record
 
+Historical record for the original authored-only dashboard. For the current corrected-response work, see `verification-current.md`.
+
 Verified on October 17, 2026 in the local Codex workspace.
 
 ## Automated checks

@@ -58,8 +58,11 @@ export function validateAnalysis(input) {
   unique(alerts, 'alerts');
   const summary = input.sharing_summary;
   if (!summary || typeof summary.execution_verified !== 'boolean') throw new Error('sharing_summary.execution_verified must be explicit.');
+  const normalizedNodes = nodes.map(n=>({...n,bank_ids:[n.bank_id]}));
+  const normalizedEdges = edges.map(e=>({...e,contributing_bank_id:nodes.find(n=>n.id===e.source).bank_id===nodes.find(n=>n.id===e.target).bank_id ? nodes.find(n=>n.id===e.source).bank_id : null}));
   return { schema_version: '1.0', scenario_id: string(input.scenario_id, 'scenario_id'), synthetic: input.synthetic,
-    banks, graph: { nodes, edges }, collaborative_alerts: alerts,
+    replay_supported:true,comparison:{local_valid:true,note:'Authored demonstration counts, not a computed accuracy comparison.'},
+    banks, graph: { nodes:normalizedNodes, edges:normalizedEdges }, collaborative_alerts: alerts,
     sharing_summary: { raw_rows_shared: integer(summary.raw_rows_shared, 'raw_rows_shared'),
       shared_fields: strings(summary.shared_fields, 'shared_fields'), retained_local: strings(summary.retained_local, 'retained_local'),
       execution_verified: summary.execution_verified } };
@@ -67,19 +70,24 @@ export function validateAnalysis(input) {
 export function maxStep(data) {
   return Math.max(0, ...data.graph.edges.map(e => e.step), ...data.collaborative_alerts.map(a => a.detected_at_step));
 }
-export function deriveView(data, step, collaborative) {
+export function deriveView(data, step, collaborative, bankId = null) {
   const nodeMap = new Map(data.graph.nodes.map(n => [n.id, n]));
-  const edges = data.graph.edges.filter(e => e.step <= step && (collaborative || nodeMap.get(e.source).bank_id === nodeMap.get(e.target).bank_id));
-  const alerts = collaborative ? data.collaborative_alerts.filter(a => a.detected_at_step <= step) : [];
-  return { edges, alerts, nodeMap, crossBankEdges: edges.filter(e => nodeMap.get(e.source).bank_id !== nodeMap.get(e.target).bank_id),
-    participatingBanks: new Set(edges.flatMap(e => [nodeMap.get(e.source).bank_id, nodeMap.get(e.target).bank_id])).size };
+  const edges = data.graph.edges.filter(e => e.step <= step && (collaborative || (e.contributing_bank_id !== null && (!bankId || e.contributing_bank_id===bankId))));
+  const visibleIds=new Set(edges.flatMap(e=>[e.source,e.target]));
+  const nodes=collaborative ? data.graph.nodes : data.graph.nodes.filter(n=>visibleIds.has(n.id));
+  const visibleEdgeIds=new Set(edges.map(e=>e.id));
+  const candidates=collaborative?data.collaborative_alerts:data.banks.filter(b=>!bankId||b.id===bankId).flatMap(b=>b.local_structural_findings||[]);
+  const alerts = candidates.filter(a => a.detected_at_step <= step && a.edge_ids.every(id=>visibleEdgeIds.has(id)));
+  return { edges, nodes, alerts, nodeMap, crossBankEdges: edges.filter(e => e.contributing_bank_id===null),
+    participatingBanks: new Set(edges.map(e=>e.contributing_bank_id).filter(Boolean)).size };
 }
-export function caseExport(data, step, collaborative, source) {
-  const view = deriveView(data, step, collaborative);
+export function caseExport(data, step, collaborative, source, bankId=null) {
+  const view = deriveView(data, step, collaborative, bankId);
   const ids = new Set(view.edges.flatMap(e => [e.source, e.target]));
   return { exported_at: new Date().toISOString(), source, synthetic: data.synthetic, scenario_id: data.scenario_id,
-    mode: collaborative ? 'collaborative' : 'local-only', replay_step: step,
+    mode: collaborative ? 'collaborative' : 'local-only', selected_bank: bankId, replay_step: data.replay_supported ? step : null,
     graph: { nodes: data.graph.nodes.filter(n => ids.has(n.id)), edges: view.edges },
-    collaborative_alerts: view.alerts, sharing_summary: collaborative ? data.sharing_summary : null,
-    limitations: 'Display export only. No inference, privacy, deployment, or security verification is performed by this frontend. Local-only mode is a visualization of the backend or fixture output, not bank-level access control.' };
+    collaborative_alerts: collaborative ? view.alerts : [], local_structural_findings: collaborative ? [] : view.alerts, sharing_summary: collaborative ? data.sharing_summary : null,
+    provenance:data.provenance||null,
+    limitations: 'Display export only. No inference, privacy, deployment, or security verification is performed by this frontend. Local-only mode is a visualization of the backend or fixture output, not bank-level access control. Membership describes incidence in bank-contributed signals, not account ownership.' };
 }

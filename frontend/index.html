@@ -32,6 +32,7 @@
         <div class="control-group"><span class="control-label">ANALYSIS MODE</span><div class="segmented" aria-label="Analysis mode"><button id="local-mode" aria-pressed="false">Local only</button><button id="collab-mode" class="selected" aria-pressed="true">◈ Collaborative</button></div></div>
         <div class="replay-controls"><span id="replay-status" class="muted">Scenario complete</span><button id="reset-button" class="icon-button" title="Reset scenario" aria-label="Reset scenario">↺</button><button id="step-button" class="button subtle">Step →</button><button id="play-button" class="button primary">▶ Replay scenario</button></div>
       </section>
+      <section class="source-controls" aria-label="Result source"><label for="demo-source">Result source</label><select id="demo-source"><option value="authored">Authored synthetic replay (fallback)</option><option value="ring">Computed synthetic ring (saved graph output)</option><option value="normal">Computed unrelated activity (saved graph output)</option><option value="local-control">Computed single-bank cycle (control)</option><option value="api" disabled>Connected API snapshot</option></select><span>API connection: gear icon · Endpoint integration unverified</span></section>
       <section id="metrics" class="metrics" aria-label="Scenario results"></section>
       <div class="investigation-grid">
         <section class="panel network-panel">
@@ -45,7 +46,7 @@
         <aside class="panel case-panel" aria-label="Selected case"><div class="panel-heading"><div><div class="eyebrow">INVESTIGATION BRIEF</div><h2 id="case-title">Cross-bank cycle</h2></div><span id="case-badge" class="badge danger">Review</span></div><div id="case-content"></div></aside>
       </div>
       <section class="institution-section"><div class="section-heading"><h2>Institution activity</h2><span class="muted">Select a bank to focus its entities <span class="synthetic-label">SYNTHETIC</span></span></div><div id="banks" class="bank-grid"></div></section>
-      <section class="panel comparison-panel"><div><div class="eyebrow">THE COLLABORATION EFFECT</div><h2>Fragments become a connected case.</h2><p id="comparison-description">Each bank sees a local fragment. Permitted relationship signals reveal the complete cycle.</p></div><div id="comparison" class="comparison"></div></section>
+      <section class="panel comparison-panel"><div><div class="eyebrow">CONTROLLED SCENARIO RESULTS</div><h2>Different signals. Different units.</h2><p id="comparison-description">Transaction-risk flags, local structures and collaborative cases are separate outputs.</p></div><div id="comparison" class="comparison"></div></section>
       <footer><span><strong>FraudMesh</strong> <span class="footer-slash">/</span> IBM Z Datathon 2026 · Frontend prototype</span><span>Decision support only · Synthetic fixture results · No production privacy guarantee</span></footer>
     </main>
   </div>

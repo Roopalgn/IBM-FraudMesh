@@ -1,0 +1,284 @@
+{
+  "profile": "person3.graph.v2",
+  "scenario_id": "computed-ring",
+  "synthetic": true,
+  "provenance": {
+    "kind": "generated-fixture",
+    "repository": "https://github.com/Roopalgn/IBM-FraudMesh",
+    "commit": "34822ed09e167a810abc29cdde5104b569e84b72",
+    "function": "fraudmesh.integration.build_analysis_response",
+    "networkx_version": "3.4.2",
+    "source_sha256": {
+      "__init__.py": "327116400672e1730b952d32c9bd5b59ed8f51067e92a7f72f01d72b7bbd7aa7",
+      "privacy.py": "829e8ca3124bc7f1d43b2f5df2f354321b8321f23a1f893042adebb8e981ffe8",
+      "graph_engine.py": "30d54d07b34fd4be694d97ad8b639ffa85c7bb3633daf3f79cb50d18f00ce23e",
+      "integration.py": "d4816ac9f8f57374deccbaad33954e5b11fe3e74fae0e5fb5ee2263ae5700e22",
+      "scenarios.py": "83684aee4f2838faf870de45a0b367033d118f32f651258973fd962131d92c03",
+      "local_transform.py": "c81b2e9ae0c8330fe8e4904039c9c5639abf3dd11f9559006d7915df63020ee8"
+    },
+    "input": "three_bank_fraud_ring()",
+    "local_comparison": "same structural detector applied per institution and to combined signals",
+    "live_api_verified": false,
+    "linuxone_verified": false
+  },
+  "analysis": {
+    "component_metadata": {
+      "shared_signal_schema": "fraudmesh-shared-signal/v1",
+      "validation": "restricted schema and scalar representations validated",
+      "scenario": "synthetic_only"
+    },
+    "bank_results": [
+      {
+        "institution_id": "bank_a",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      },
+      {
+        "institution_id": "bank_b",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      },
+      {
+        "institution_id": "bank_c",
+        "signals_processed": 1,
+        "local_structural_findings": []
+      }
+    ],
+    "collaborative_alerts": [
+      {
+        "alert_id": "FM-RING-b5282de990a6",
+        "risk_level": "high",
+        "structural_pattern": "cycle",
+        "cross_institution": true,
+        "institutions_involved": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "linked_entities": [
+          "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+          "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+          "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781"
+        ],
+        "evidence": [
+          {
+            "code": "cycle",
+            "supporting_signal_ids": [
+              "demo-a-001",
+              "demo-b-001",
+              "demo-c-001"
+            ],
+            "linked_entities": [
+              "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+              "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+              "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781"
+            ]
+          },
+          {
+            "code": "cross_institution_cycle",
+            "supporting_signal_ids": [
+              "demo-a-001",
+              "demo-b-001",
+              "demo-c-001"
+            ],
+            "institutions": [
+              "bank_a",
+              "bank_b",
+              "bank_c"
+            ]
+          },
+          {
+            "code": "rapid_propagation",
+            "elapsed_minutes": 0,
+            "resolution": "UTC hour buckets"
+          }
+        ],
+        "supporting_signal_ids": [
+          "demo-a-001",
+          "demo-b-001",
+          "demo-c-001"
+        ],
+        "timestamp_buckets": [
+          "2026-10-17T10:00Z"
+        ],
+        "time_window_minutes": 0,
+        "max_local_risk_score": 0.48,
+        "edge_count": 3
+      }
+    ],
+    "graph": {
+      "nodes": [
+        {
+          "id": "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+          "institution_ids": [
+            "bank_a",
+            "bank_b"
+          ]
+        },
+        {
+          "id": "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781",
+          "institution_ids": [
+            "bank_a",
+            "bank_c"
+          ]
+        },
+        {
+          "id": "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+          "institution_ids": [
+            "bank_b",
+            "bank_c"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": "demo-a-001",
+          "signal_id": "demo-a-001",
+          "source": "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781",
+          "target": "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+          "institution_id": "bank_a",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "10k_50k",
+          "local_risk_score": 0.42,
+          "channel": "transfer"
+        },
+        {
+          "id": "demo-b-001",
+          "signal_id": "demo-b-001",
+          "source": "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+          "target": "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+          "institution_id": "bank_b",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "10k_50k",
+          "local_risk_score": 0.48,
+          "channel": "transfer"
+        },
+        {
+          "id": "demo-c-001",
+          "signal_id": "demo-c-001",
+          "source": "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+          "target": "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781",
+          "institution_id": "bank_c",
+          "timestamp_bucket": "2026-10-17T10:00Z",
+          "amount_bucket": "10k_50k",
+          "local_risk_score": 0.45,
+          "channel": "transfer"
+        }
+      ]
+    },
+    "comparison": {
+      "comparison_unit": "structural pattern findings",
+      "local_only": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 3,
+        "finding_count": 0,
+        "findings_by_institution": {
+          "bank_a": [],
+          "bank_b": [],
+          "bank_c": []
+        }
+      },
+      "collaborative": {
+        "institutions": [
+          "bank_a",
+          "bank_b",
+          "bank_c"
+        ],
+        "signals_processed": 3,
+        "finding_count": 1,
+        "findings": [
+          {
+            "alert_id": "FM-RING-b5282de990a6",
+            "risk_level": "high",
+            "structural_pattern": "cycle",
+            "cross_institution": true,
+            "institutions_involved": [
+              "bank_a",
+              "bank_b",
+              "bank_c"
+            ],
+            "linked_entities": [
+              "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+              "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+              "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781"
+            ],
+            "evidence": [
+              {
+                "code": "cycle",
+                "supporting_signal_ids": [
+                  "demo-a-001",
+                  "demo-b-001",
+                  "demo-c-001"
+                ],
+                "linked_entities": [
+                  "fm1:237f76ce1ba29b178bbb7ac62b3192e8774a19764a480b761d356a2b7ba9ca3b",
+                  "fm1:851b36e25f31738cdfc25c4ca7e0d7689495c4864f8c1971d27f7fd0ebf464aa",
+                  "fm1:74721524e7fc3e10b0ca07d4ad8741979814a7f0d79e442a35e6f5173faae781"
+                ]
+              },
+              {
+                "code": "cross_institution_cycle",
+                "supporting_signal_ids": [
+                  "demo-a-001",
+                  "demo-b-001",
+                  "demo-c-001"
+                ],
+                "institutions": [
+                  "bank_a",
+                  "bank_b",
+                  "bank_c"
+                ]
+              },
+              {
+                "code": "rapid_propagation",
+                "elapsed_minutes": 0,
+                "resolution": "UTC hour buckets"
+              }
+            ],
+            "supporting_signal_ids": [
+              "demo-a-001",
+              "demo-b-001",
+              "demo-c-001"
+            ],
+            "timestamp_buckets": [
+              "2026-10-17T10:00Z"
+            ],
+            "time_window_minutes": 0,
+            "max_local_risk_score": 0.48,
+            "edge_count": 3
+          }
+        ]
+      },
+      "interpretation": "Controlled synthetic comparison only. Each bank sees its own permitted subgraph; the combined view can reconstruct patterns whose supporting edges are split across banks."
+    },
+    "privacy": {
+      "service_verifies": [
+        "the request matches the restricted shared-signal schema",
+        "approved scalar representations are used for tokens, buckets, scores, and channels",
+        "the intended graph interface accepts shared signals rather than raw ledger rows"
+      ],
+      "service_cannot_verify": [
+        "the complete upstream behavior of a submitting bank",
+        "the authenticity or authorization of a syntactically valid token",
+        "the absence of all inference risk from shared relationships and timing"
+      ],
+      "limitations": [
+        "HMAC pseudonyms remain linkable",
+        "shared-key custody and rotation are outside this prototype",
+        "three banks are simulated rather than organizationally isolated",
+        "Secure Execution, secure aggregation, differential privacy, and remote attestation are not established"
+      ]
+    },
+    "summary": {
+      "signals_processed": 3,
+      "pseudonymous_entities": 3,
+      "structural_findings": 1,
+      "local_risk_score_usage": "displayed as evidence only; not fused into detection or severity",
+      "schema_validation": "restricted shared-signal schema accepted"
+    }
+  }
+}
