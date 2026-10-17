@@ -1,49 +1,57 @@
-# Integrated contract takes precedence
+# Frontend adaptation and proposed endpoint agreement
 
-Use the repository-root docs/data_contract.md as the authoritative contract. The integration supports optional node bank_ids and edge institution_id/local_risk_score in version 1.0. Bank attribution is validated. Local views duplicate shared entities per contributing bank and compute scores only from that bank's incident edges. The Python server provides all three endpoints and approved static assets. The original proposal below describes the authored fixture and legacy unattributed-edge behaviour.
+## Authority and source
 
-# Proposed frontend contract v1.0
+Person 1 has implemented this scenario-reference envelope in the team API. Root `docs/data_contract.md` is authoritative. The adapter accepts Person 3's corrected component response at `34822ed09e167a810abc29cdde5104b569e84b72`, plus live optional triage/review_queue fields. The component fixtures preserve the original graph behavior; live results add an explicit versioned review policy and audit receipt.
 
-This is the integration proposal for Person 4's standalone frontend, not a claim that the other teammates already implemented it. All files are confined to `frontend/` to prevent ownership conflicts. The Python component interfaces remain owned by the lead, ML and privacy teammates.
+The single supported computed-response profile is **person3.graph.v2**. The earlier component shape is intentionally rejected. The authored fallback has its own explicit fixture validator and is never substituted for failed API responses.
 
-## HTTP endpoints
+## Proposed endpoint flow
 
-| Endpoint | Request | Response |
-| --- | --- | --- |
-| `GET /health` | None | Any successful JSON object, e.g. `{"status":"ok"}` |
-| `GET /demo/scenario` | None | `{"analysis_request": { ...backend-defined demo input... }}` |
-| `POST /analyze` | Exact `analysis_request` object from the scenario endpoint, JSON | Analysis object below |
+1. `GET /health` returns a successful JSON object.
+2. `GET /demo/scenario` returns:
 
-The frontend does not invent a raw transaction schema. The scenario endpoint supplies a reproducible request for the backend. This request stays in memory, is forwarded only to the selected API, and is not included in case exports. For an integrated private workflow, keep bank-local raw data on the backend; return a scenario ID or permitted signals as the request. This UI does not provide bank authentication or authorization.
+```json
+{
+  "response_profile": "person3.graph.v2",
+  "scenario_id": "three-bank-demo",
+  "synthetic": true,
+  "analysis_request": {"scenario_id": "three-bank-demo"}
+}
+```
 
-The connection dialog performs the requests sequentially, with 15-second request timeouts. Redirects and embedded URL credentials are rejected. Credential cookies are omitted. The backend must allow the dashboard's origin with CORS, JSON `Content-Type`, and `GET`, `POST`, `OPTIONS`. Configure a narrow origin allowlist rather than deploying the test harness.
+3. `POST /analyze` sends only `{"scenario_id":"three-bank-demo"}` and receives the unchanged component response: `component_metadata`, `bank_results`, `collaborative_alerts`, `graph`, `comparison`, `privacy`, `summary`.
 
-## Analysis response
+The backend resolves the scenario reference to permitted signals. The browser never requires raw customer rows, precise local records or tokenization secrets. Extra scenario-request fields are rejected before POST. The configurable base URL accepts HTTP(S) only, without credentials, query strings or fragments. Requests omit cookies, reject redirects and use 15-second timeouts. Closing settings cancels a pending request.
 
-`public/scenario.json` is the complete, executable reference response. Required top-level fields:
+CORS must explicitly allow the actual dashboard origin (development: `http://localhost:4173` or `http://127.0.0.1:4173`), GET/POST/OPTIONS and JSON Content-Type. Starting the static server proves nothing about API reachability. An HTTPS dashboard needs an HTTPS API.
 
-| Field | Type / meaning |
+## Explicit mapping in src/graph-adapter.js
+
+| Component field | Display representation |
 | --- | --- |
-| `schema_version` | Exactly `"1.0"` |
-| `scenario_id` | Nonempty string |
-| `synthetic` | Explicit boolean; never inferred from the API connection |
-| `banks` | 1–3 bank summaries |
-| `graph` | `{ "nodes": [...], "edges": [...] }` |
-| `collaborative_alerts` | Case array; empty when no cases exist |
-| `sharing_summary` | Sharing declaration and execution-status report |
+| `component_metadata.shared_signal_schema` | Must be `fraudmesh-shared-signal/v1`; scenario must declare synthetic_only |
+| `bank_results[].institution_id` | Canonical bank ID; casing is preserved, not guessed |
+| `signals_processed` | Validated against the number of contributed graph edges |
+| `local_structural_findings` | Validated local structures and count; separate from ML flags |
+| `graph.nodes[].id` | Same canonical HMAC token, with a short Entity NN display label |
+| `institution_ids` | Preserved memberships, checked against incident edge contributors; never exclusive ownership |
+| `graph.edges[].id / signal_id` | Required to match; preserved as evidence ID |
+| `institution_id` on edge | Contributing bank, used by the selected local view |
+| `timestamp_bucket / amount_bucket / local_risk_score / channel` | Permitted hour/value buckets, uncalibrated signal score and channel; no node-score aggregation |
+| `alert_id / supporting_signal_ids / linked_entities` | Case ID and validated existing edge/node references |
+| `evidence[]` objects | Escaped reason codes and supporting references; no raw object HTML |
+| `timestamp_buckets / time_window_minutes` | Coarse case timing, not measured detector latency |
+| `comparison.comparison_unit` | Must be structural pattern findings; local/combined counts and finding references are cross-checked |
+| `privacy.service_verifies / service_cannot_verify / limitations` | Display actual validation scope and limitations |
+| `summary.structural_findings` | Must agree with case count; signal/entity totals checked too |
 
-Bank: `id`, `name`, integer `entity_count`, integer `local_alerts`, integer `local_ring_count`. Optional `local_findings`: array of `{title, detail}`. Counts and findings describe the **complete scenario**; replay temporarily suppresses card counts until that bank has a visible relationship. They are not timed local detector outputs. Local flags are not equivalent to complete fraud rings.
+Missing ML flag counts, node scores, raw-row counts and attested execution status are unavailable/unverified. A bare execution_verified boolean is not sufficient deployment evidence. Per-signal scores are not calibrated fraud probabilities and are not fused into this structural detector.
 
-Node: `id`, `bank_id`, `label`, numeric `local_risk` in `[0,1]`. The local risk is a backend score or fixture value, not a calibrated probability unless evaluated separately. Up to 60 display nodes are supported; use a small case subgraph for a readable investigator view. Raw customer identifiers must not be used as node IDs or labels.
+`src/model.js` derives local graphs by edge contributor, retaining all endpoint entities without duplicating shared tokens. Exports contain only current visible evidence; local findings have their own export field. Authored replay does not export future nodes, edges or cases. API and generated snapshots have no replay timestamps.
 
-Edge: `id`, `source`, `target`, `kind`, integer `step` in `[1,200]`, `time_bucket`, `risk_band`. Entity references must exist. `step` provides replay order for fixtures; live API analysis is displayed as a complete snapshot with replay disabled. Supported display limit: 200 edges. Coarse time buckets and risk bands are permitted signals, still potentially sensitive.
+Empty display graphs, multiple cases and missing optional information are supported. Invalid counts, memberships, references, scores or profiles fail visibly and retain existing data. Unknown payload properties are projected out, but this is not proof that upstream traffic contained no raw data. Authentication, authorization and bank-side policy remain backend responsibilities.
 
-Alert: `id`, `title`, `severity`, integer `detected_at_step`, `node_ids`, `edge_ids`, `reasons`. Each reason has `code`, `title`, `detail`. Graph references must exist, and no supporting edge may arrive after the alert's detection step. Up to 100 cases are accepted; multiple cases use a case selector. The UI displays a review status, rather than treating an alert as a confirmed fraud verdict.
+## Generated fixtures
 
-Sharing summary: `raw_rows_shared` is null for computed API snapshots (not independently audited), or a nonnegative integer in authored fixtures, string-array `shared_fields`, string-array `retained_local`, explicit boolean `execution_verified`. The fields list describes shared **relationship** fields; pseudonymous node IDs, institution IDs, labels and local risk are also displayed. All claims received from the API are labeled backend-reported. A true execution flag is not remote attestation.
-
-## Display and export boundary
-
-`src/model.js` validates the response and projects known display fields. Invalid data fails visibly without replacing current data. Unknown properties are omitted from normalized display/export output; this is defense in depth, not proof of data minimization at the network boundary. Strings are escaped during HTML/SVG rendering. The raw JSON HTTP response still arrives in the browser and must already satisfy the team's bank-sharing policy.
-
-Local mode shows only same-bank edges and no collaborative alerts. Selecting a bank highlights its entities rather than performing a privileged bank login. The comparison uses reported local ring counts and collaborative case counts; these are different units and the chart explicitly avoids accuracy claims. Precision, recall, false-positive rate and inference latency require the ML/backend teammates' measured evaluation.
+Ring, unrelated-activity and single-bank-control JSON files were generated by unchanged pinned Python code with NetworkX 3.4.2. Each includes function, commit, source SHA-256 hashes, input description and explicit synthetic/live/deployment status. They prove frontend adaptation to actual computed component output, not a live API or LinuxONE deployment.

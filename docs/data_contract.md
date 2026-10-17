@@ -1,3 +1,15 @@
+# Current API profile
+
+The default browser API now implements Person 4's proposed person3.graph.v2 contract. GET /demo/scenario?name=common|ring|normal|local returns response_profile, scenario_id, synthetic, and analysis_request containing only scenario_id. POST /analyze with that reference computes raw component sections on the server. The browser adapts component_metadata, bank_results, graph, comparison, privacy and summary via frontend/src/graph-adapter.js. Saved fixtures remain pinned to Person 3's older unprioritized component output.
+
+API outputs additionally include review_queue, per-finding triage, measurement and audit. Prioritization adds ml_informed_priority evidence without removing candidates; review priority is not a probability. The raw component module remains usable without that policy wrapper. The new flow_hub pattern includes at least three inbound/outbound counterparties and complete supporting signal references.
+
+Local ML scores now affect review prioritization, while structural extraction remains a rule engine. A two-sided hub/cycle structure, mean supporting transaction score, nearby hour buckets and amount-band consistency contribute fixed weights 0.35/0.35/0.20/0.10. Review threshold is 0.75. Candidate severity reflects the review policy in live API output; structural_risk_level retains the original rule label.
+
+Every successful API analysis persists a count/digest journal entry and returns its sequence/hash. The receipt is not external attestation, and the journal can be truncated or fully rewritten by an administrator. Read /audit/status for current local chain consistency. Request limits and generic rejection responses remain unchanged.
+
+The legacy dashboard.v1 profile remains available via GET /demo/scenario?profile=dashboard.v1 and explicit shared_signals POST requests. Its previous contract follows for backwards compatibility.
+
 # Authoritative integrated data contract
 
 This integration contract reconciles the existing ML, graph, and frontend components. The system accepts only synthetic demonstrations. Do not create a second competing API schema in a component.
@@ -51,7 +63,7 @@ Nodes retain id, label, local_risk, bank_id. The integration adds bank_ids, a li
 
 Edges retain id, source, target, kind, step, time_bucket, risk_band. The integration adds institution_id and local_risk_score. step is a deterministic display ordering over coarse bucket/reference order, not exact chronology or measured detection timing. The live view disables replay. Node memberships must include the contributing edge bank.
 
-Alerts retain id, title, severity, detected_at_step, node_ids, edge_ids, and reasons (code/title/detail). Supporting references must exist. Severity is high for cross-institution candidates and medium for local candidates; model scores are contextual evidence, not fused into the detector threshold. A cross-institution cycle reason refers to an actual detected cycle; supporting_signal_ids and evidence objects come from the exact candidate, rather than unrelated relationships elsewhere in a connected component.
+Legacy alerts retain id, title, severity, detected_at_step, node_ids, edge_ids, and reasons (code/title/detail). Supporting references must exist. Structural extraction does not use model scores; the API's subsequent versioned review policy does use them and determines displayed severity. A cross-institution cycle reason refers to an actual detected cycle; supporting_signal_ids and evidence objects come from the exact candidate, rather than unrelated relationships elsewhere in a connected component.
 
 sharing_summary retains raw_rows_shared=null for API outputs (the authored fallback fixture still declares zero), shared_fields, retained_local, execution_verified=false. Null means raw-row traffic has not been independently audited; do not display an invented numeric measurement. The accepted schema excludes raw row fields, which is distinct from network auditing or remote attestation. The API includes validation_scope to explain this distinction. Token/graph linkability remains.
 
