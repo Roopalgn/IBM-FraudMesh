@@ -1,10 +1,9 @@
-"""Privacy-boundary helpers for the FraudMesh prototype.
+"""Restricted shared-signal contract for the FraudMesh prototype.
 
-The collaborative service receives deterministic HMAC tokens and coarse
-features only.  This is pseudonymization, not anonymization: a stable token
-can still reveal relationships, and anyone with the secret and source ID can
-recreate a token.  Production key custody, access control, rotation, and
-participant agreements are outside this prototype.
+Banks transform their synthetic local records before the collaborative graph
+service sees them. The service validates schema and representation; it cannot
+prove a token was created by an authorized bank or establish how a participant
+handled data before submission.
 """
 
 from __future__ import annotations
@@ -13,10 +12,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import hmac
-from typing import Any, Iterable, Mapping
+import math
+import re
+from typing import Any
 
 
 TOKEN_VERSION = "fm1"
+SHARED_SCHEMA_VERSION = "fraudmesh-shared-signal/v1"
+ALLOWED_INSTITUTIONS = frozenset({"bank_a", "bank_b", "bank_c"})
+ALLOWED_AMOUNT_BUCKETS = frozenset({"lt_1k", "1k_10k", "10k_50k", "gte_50k"})
+ALLOWED_CHANNELS = frozenset({"transfer", "card", "ach", "wire", "upi"})
 SHARED_SIGNAL_FIELDS = frozenset(
     {
         "signal_id",
@@ -42,28 +47,39 @@ RAW_OR_DISALLOWED_FIELDS = frozenset(
         "timestamp",
         "label",
         "fraud_label",
+        "scenario_ground_truth",
     }
 )
+SIGNAL_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
+TOKEN_PATTERN = re.compile(r"^fm1:[0-9a-f]{64}$")
+TIMESTAMP_BUCKET_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:00Z$")
 
 
 class PrivacyContractError(ValueError):
-    """Raised when a signal does not meet the collaborative allowlist."""
+    """Raised when data fails the restricted collaborative-signal contract."""
+
+
+def _is_finite_number(value: Any) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
 
 
 def pseudonymize_identifier(identifier: str, secret: str | bytes) -> str:
-    """Return a deterministic, versioned HMAC token for a synthetic ID.
+    """Return a deterministic, versioned HMAC token for a synthetic entity ID.
 
-    The same normalized identifier and shared secret produce the same token
-    across banks.  A real deployment would source ``secret`` from a managed
-    key service; callers must never log, commit, or send it to the analysis
-    service.
+    Call this only at the bank-local transformation boundary. The shared secret
+    remains outside collaborative requests. Deterministic tokens are linkable
+    pseudonyms, not anonymous identifiers or authenticated assertions.
     """
     if not isinstance(identifier, str) or not identifier.strip():
-        raise PrivacyContractError("identifier must be a non-empty string")
+        raise PrivacyContractError("entity identifier must be a non-empty string")
     if isinstance(secret, str):
         secret = secret.encode("utf-8")
     if not isinstance(secret, bytes) or not secret:
-        raise PrivacyContractError("secret must be a non-empty string or bytes")
+        raise PrivacyContractError("linkage secret must be a non-empty string or bytes")
 
     normalized = identifier.strip().casefold().encode("utf-8")
     digest = hmac.new(secret, normalized, hashlib.sha256).hexdigest()
@@ -71,7 +87,7 @@ def pseudonymize_identifier(identifier: str, secret: str | bytes) -> str:
 
 
 def coarse_timestamp_bucket(value: datetime | str) -> str:
-    """Reduce a timestamp to an ISO UTC hour bucket for velocity analysis."""
+    """Reduce a local timestamp to one canonical UTC hour bucket."""
     if isinstance(value, str):
         try:
             value = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -84,12 +100,20 @@ def coarse_timestamp_bucket(value: datetime | str) -> str:
     return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:00Z")
 
 
+def parse_timestamp_bucket(value: str) -> datetime:
+    """Validate and parse the canonical UTC hour representation."""
+    if not isinstance(value, str) or not TIMESTAMP_BUCKET_PATTERN.fullmatch(value):
+        raise PrivacyContractError("timestamp_bucket must be a canonical UTC hour bucket")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:00Z").replace(tzinfo=timezone.utc)
+    except ValueError as exc:
+        raise PrivacyContractError("timestamp_bucket must be a valid UTC hour") from exc
+
+
 def coarse_amount_bucket(amount: float | int) -> str:
     """Return a non-exact amount band; exact transaction values stay local."""
-    try:
-        amount = float(amount)
-    except (TypeError, ValueError) as exc:
-        raise PrivacyContractError("amount must be numeric") from exc
+    if not _is_finite_number(amount):
+        raise PrivacyContractError("amount must be a finite number")
     if amount < 0:
         raise PrivacyContractError("amount must not be negative")
     if amount < 1_000:
@@ -103,7 +127,7 @@ def coarse_amount_bucket(amount: float | int) -> str:
 
 @dataclass(frozen=True)
 class SharedSignal:
-    """The only transaction-derived record allowed into collaborative analysis."""
+    """The only transaction-derived record accepted by collaborative analysis."""
 
     signal_id: str
     institution_id: str
@@ -139,69 +163,79 @@ def create_shared_signal(
     secret: str | bytes,
     channel: str | None = None,
 ) -> dict[str, Any]:
-    """Transform a local synthetic transaction into an allowlisted signal."""
-    if not signal_id or not institution_id:
-        raise PrivacyContractError("signal_id and institution_id are required")
-    try:
-        score = float(local_risk_score)
-    except (TypeError, ValueError) as exc:
-        raise PrivacyContractError("local_risk_score must be numeric") from exc
-    if not 0.0 <= score <= 1.0:
-        raise PrivacyContractError("local_risk_score must be between 0 and 1")
-
-    return SharedSignal(
-        signal_id=str(signal_id),
-        institution_id=str(institution_id),
+    """Transform one bank-local synthetic transaction into a restricted signal."""
+    signal = SharedSignal(
+        signal_id=signal_id,
+        institution_id=institution_id,
         source_entity_token=pseudonymize_identifier(source_entity_id, secret),
         destination_entity_token=pseudonymize_identifier(destination_entity_id, secret),
         timestamp_bucket=coarse_timestamp_bucket(timestamp),
         amount_bucket=coarse_amount_bucket(amount),
-        local_risk_score=score,
+        local_risk_score=local_risk_score,
         channel=channel,
     ).as_dict()
+    validate_shared_signal(signal)
+    return signal
 
 
-def validate_shared_signal(signal: Mapping[str, Any]) -> None:
-    """Enforce the field allowlist before graph construction.
+def validate_shared_signal(signal: Any) -> None:
+    """Require exactly one valid, scalar-only shared-signal record.
 
-    The validator intentionally rejects undeclared fields rather than silently
-    dropping them, making accidental raw-data expansion visible in tests and
-    integration logs.
+    Validation enforces allowed representations, not provenance. A token with
+    valid HMAC syntax may still be fabricated by an unauthorized sender.
     """
+    if not isinstance(signal, dict):
+        raise PrivacyContractError("shared signal must be a JSON object")
+
     fields = set(signal)
-    disallowed = fields & RAW_OR_DISALLOWED_FIELDS
-    if disallowed:
-        raise PrivacyContractError(f"disallowed raw fields: {sorted(disallowed)}")
-    unexpected = fields - SHARED_SIGNAL_FIELDS
-    if unexpected:
-        raise PrivacyContractError(f"fields outside shared schema: {sorted(unexpected)}")
-    missing = SHARED_SIGNAL_FIELDS - fields
-    if missing:
-        raise PrivacyContractError(f"required shared fields missing: {sorted(missing)}")
-    if not isinstance(signal["signal_id"], str) or not signal["signal_id"].strip():
-        raise PrivacyContractError("signal_id must be a non-empty string")
-    if not isinstance(signal["institution_id"], str) or not signal["institution_id"].strip():
-        raise PrivacyContractError("institution_id must be a non-empty string")
-    if not isinstance(signal["source_entity_token"], str) or not signal[
-        "source_entity_token"
-    ].startswith(f"{TOKEN_VERSION}:"):
-        raise PrivacyContractError("source_entity_token is not a FraudMesh token")
-    if not isinstance(signal["destination_entity_token"], str) or not signal[
-        "destination_entity_token"
-    ].startswith(f"{TOKEN_VERSION}:"):
-        raise PrivacyContractError("destination_entity_token is not a FraudMesh token")
+    if fields & RAW_OR_DISALLOWED_FIELDS:
+        raise PrivacyContractError("shared signal contains prohibited raw-data fields")
+    if fields - SHARED_SIGNAL_FIELDS:
+        raise PrivacyContractError("shared signal contains fields outside the approved schema")
+    if SHARED_SIGNAL_FIELDS - fields:
+        raise PrivacyContractError("shared signal is missing required approved fields")
+
+    signal_id = signal["signal_id"]
+    if not isinstance(signal_id, str) or not SIGNAL_ID_PATTERN.fullmatch(signal_id):
+        raise PrivacyContractError("signal_id must be a bounded opaque reference")
+
+    institution_id = signal["institution_id"]
+    if not isinstance(institution_id, str) or institution_id not in ALLOWED_INSTITUTIONS:
+        raise PrivacyContractError("institution_id is not in the simulated-bank allowlist")
+
+    for token_field in ("source_entity_token", "destination_entity_token"):
+        token = signal[token_field]
+        if not isinstance(token, str) or not TOKEN_PATTERN.fullmatch(token):
+            raise PrivacyContractError(f"{token_field} must be a canonical versioned HMAC token")
+
+    parse_timestamp_bucket(signal["timestamp_bucket"])
+
+    amount_bucket = signal["amount_bucket"]
+    if not isinstance(amount_bucket, str) or amount_bucket not in ALLOWED_AMOUNT_BUCKETS:
+        raise PrivacyContractError("amount_bucket must be one of the approved coarse categories")
+
     score = signal["local_risk_score"]
-    if not isinstance(score, (int, float)) or not 0.0 <= float(score) <= 1.0:
-        raise PrivacyContractError("local_risk_score must be in [0, 1]")
+    if not _is_finite_number(score) or not 0.0 <= float(score) <= 1.0:
+        raise PrivacyContractError("local_risk_score must be a finite number in [0, 1]")
+
+    channel = signal["channel"]
+    if channel is not None and (
+        not isinstance(channel, str) or channel not in ALLOWED_CHANNELS
+    ):
+        raise PrivacyContractError("channel must be null or an approved coarse channel")
 
 
-def validate_shared_signals(signals: Iterable[Mapping[str, Any]]) -> None:
-    """Validate all signals without retaining local records."""
+def validate_shared_signals(signals: Any) -> None:
+    """Validate a non-empty batch before any graph construction occurs."""
+    if not isinstance(signals, (list, tuple)):
+        raise PrivacyContractError("shared_signals must be a list or tuple of signal objects")
+    if not signals:
+        raise PrivacyContractError("shared_signals must not be empty")
+
     seen_signal_ids: set[str] = set()
     for signal in signals:
         validate_shared_signal(signal)
         signal_id = signal["signal_id"]
         if signal_id in seen_signal_ids:
-            raise PrivacyContractError(f"duplicate signal_id: {signal_id}")
+            raise PrivacyContractError("shared signal IDs must be unique within a batch")
         seen_signal_ids.add(signal_id)
-
