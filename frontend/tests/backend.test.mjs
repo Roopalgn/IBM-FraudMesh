@@ -6,6 +6,7 @@ import {existsSync} from 'node:fs';
 import {adaptGraphResponse,GRAPH_PROFILE} from '../src/graph-adapter.js';
 import {deriveView,caseExport} from '../src/model.js';
 import {loadAnalysis} from '../src/api.js';
+import {crossBankCaseCount} from '../src/workspace.js';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const venv=fileURLToPath(new URL(process.platform==='win32'?'../../.venv/Scripts/python.exe':'../../.venv/bin/python',import.meta.url));
 const python=process.env.FRAUDMESH_TEST_PYTHON||(existsSync(venv)?venv:'python');
@@ -13,6 +14,12 @@ const generated=spawnSync(python,['-B','-c',"import runpy; runpy.run_path('tests
 if(generated.status!==0)throw new Error(generated.stderr);
 const outputs=JSON.parse(generated.stdout);
 const adapt=name=>adaptGraphResponse(outputs[name].analysis,{profile:GRAPH_PROFILE,scenario_id:outputs[name].scenario.scenario_id,synthetic:true});
+test('cross-bank count excludes actual local structures and ordinary activity',()=>{
+ for(const [name,expected] of [['common',1],['ring',1],['normal',0],['local',0]]){
+  const data=adapt(name);
+  assert.equal(crossBankCaseCount(data,deriveView(data,0,true).alerts),expected,name);
+ }
+});
 test('actual API responses adapt with structured evidence and ML-informed review policy',()=>{
  for(const name of Object.keys(outputs))assert.equal(adapt(name).synthetic,true);
  assert.equal(adapt('common').graph.edges.length,21);

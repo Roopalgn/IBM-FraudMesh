@@ -1,0 +1,47 @@
+1
+00:00:00,000 --> 00:00:15,000
+Three banks. One payment network. Follow the money. Reveal the network.
+
+2
+00:00:15,000 --> 00:00:30,000
+Each institution sees a fragment of the same synthetic ring scenario.
+
+3
+00:00:30,000 --> 00:00:45,000
+Combined permitted signals reveal a computed cross-bank case. This animation changes visibility.
+
+4
+00:00:45,000 --> 00:01:00,000
+Inspect supporting signals, contributing institutions, coarse time and amount buckets.
+
+5
+00:01:00,000 --> 00:01:20,000
+Local ML scores transactions. Graph rules find structures. Review priority is not a fraud probability.
+
+6
+00:01:20,000 --> 00:01:35,000
+The payroll fan-out candidate stays visible without a policy review recommendation.
+
+7
+00:01:35,000 --> 00:01:45,000
+Normal activity returns no case. These are controlled synthetic examples.
+
+8
+00:01:45,000 --> 00:02:05,000
+Only permitted fields enter the collaborative graph. Pseudonymous relationships remain linkable.
+
+9
+00:02:05,000 --> 00:02:25,000
+A recorded LinuxONE s390x run passed 71 backend tests. Confidential execution and hardware acceleration remain unverified.
+
+10
+00:02:25,000 --> 00:02:40,000
+Verify the running service journal. Local hash-chain consistency is not immutability.
+
+11
+00:02:40,000 --> 00:02:50,000
+Export the case with supporting evidence and source labels.
+
+12
+00:02:50,000 --> 00:03:00,000
+Three institutions. One connected investigation. FraudMesh.
