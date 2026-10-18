@@ -1,6 +1,6 @@
 # FraudMesh investigator dashboard
 
-The dependency-free HTML/CSS/JavaScript frontend includes Person 4's `feat/dashboard` at `15f6d89` and Person 1's live API integration. No install/build step is needed for runtime.
+The dependency-free HTML/CSS/JavaScript frontend includes finalized UI commit `6df9973`, Person 1's API integration, and the replay-safe comparison fix. No install/build step is needed for runtime.
 
 ## Final motion and recording preview
 
@@ -24,8 +24,10 @@ frame intervals in the body `data-motion-profile` attribute for developer review
 these measurements are unrelated to inference latency.
 
 The 180-second narration, shot list and caption draft are in `docs/demo/`.
-No completed film or narration audio is included. LinuxONE execution must still
-be verified on the actual target before making deployment claims.
+No completed film or narration audio is included. A LinuxONE s390x run of backend
+commit `3058fb8` is recorded in `public/linuxone-run-evidence.json`, transcribed
+from user-supplied output/screenshots. Recheck this revised UI on the VM before
+recording. Confidential execution and hardware acceleration remain unverified.
 
 ## Run from a teammate's checkout
 
@@ -57,11 +59,11 @@ node --test tests/*.test.mjs
 node --check src/app.js
 ```
 
-39 tests pass, including existing model/adapter/API checks, presentation helpers, and frame-reporting validation.
+41 tests cover model/adapter/API checks, presentation helpers, frame-reporting validation, replay-safe cross-bank counts and actual API local/cross-bank distinctions.
 
 ## API integration
 
-Person 1 has implemented the `person3.graph.v2` scenario-reference envelope in the team API. The same-origin application loads computed common/ring/normal/local scenarios; the browser sends only the scenario reference. Root `docs/data_contract.md` is authoritative. The legacy dashboard.v1 signal interface remains explicitly available for earlier clients. See root `docs/integration_handoff.md` for integration verification; LinuxONE execution remains unverified.
+Person 1 has implemented the `person3.graph.v2` scenario-reference envelope in the team API. The same-origin application loads computed common/ring/normal/local scenarios; the browser sends only the scenario reference. Root `docs/data_contract.md` is authoritative. The legacy dashboard.v1 signal interface remains explicitly available for earlier clients. Root `docs/linuxone.md` distinguishes the recorded backend execution from the required new UI smoke check.
 
 For frontend wiring tests only, run a second terminal:
 
@@ -77,4 +79,4 @@ One entity can appear in several institutions' contributed relationships. Member
 
 Transaction-risk flags, local structural findings and combined cases are separate units. ML flag counts and node scores are unavailable when not supplied. Per-signal scores appear on evidence rows without invented node aggregation. Structural extraction remains rule-based; live API results additionally include a fixed ML-informed review policy that affects recommendation/severity and preserves the original structural label. Priority is not fraud probability. Hour buckets do not establish event-level detection timing.
 
-The corrected service reports validation scope and limitations, not an audited count of raw rows shared/received. Those values stay unavailable. LinuxONE deployment, Secure Execution, remote attestation and production privacy guarantees remain unverified. See `docs/verification-current.md`, `docs/demo_script.md` and `docs/person1_handoff.md`.
+The service reports validation scope and limitations, not an audited count of raw rows shared/received. Those values stay unavailable. Recorded LinuxONE execution is distinct from Secure Execution, remote attestation, hardware acceleration and production privacy guarantees, which remain unverified. Earlier component verification notes are historical; root docs/linuxone.md records the current deployment handoff.

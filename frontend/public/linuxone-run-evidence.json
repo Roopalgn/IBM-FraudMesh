@@ -1,0 +1,38 @@
+{
+  "kind": "transcribed_recorded_execution_evidence",
+  "reported_date": "2026-10-18",
+  "source": "User-supplied LinuxONE terminal transcript and screenshots in the project conversation; not independently retrieved from the VM",
+  "git_commit": "3058fb8e8a90395e01c0c32b6d46472e5b5eae49",
+  "tracked_changes_present": false,
+  "architecture": "s390x",
+  "system": "Linux",
+  "python": "3.12.3",
+  "python_tests_passed": 71,
+  "model_version": "synthetic-local-logistic-v2",
+  "policy_version": "ml-graph-triage/v1",
+  "in_process_workload": {
+    "analyses": 90,
+    "transactions": 490,
+    "elapsed_seconds": 0.104002,
+    "transactions_per_second": 4711.448,
+    "median_ms": 1.143,
+    "p95_ms": 1.346,
+    "scope": "Sequential synthetic bank-local ML, signal preparation, graph comparison and triage; throughput includes case generation; excludes HTTP and journal writes"
+  },
+  "http_workload": {
+    "scope": "Loopback scenario-reference analysis including bank preparation and journal persistence; excludes browser rendering",
+    "results": [
+      {"concurrent_clients": 1, "requests": 20, "requests_per_second": 106.618, "median_ms": 9.24, "p95_ms": 10.658},
+      {"concurrent_clients": 4, "requests": 20, "requests_per_second": 105.702, "median_ms": 26.547, "p95_ms": 146.011}
+    ]
+  },
+  "journal_status": {"valid": true, "events": 54},
+  "confidential_execution_verified": false,
+  "hardware_crypto_acceleration_verified": false,
+  "limitations": [
+    "Evidence applies only to the named historical backend commit, not every future UI release or this browser session",
+    "Small synthetic workload and loopback HTTP results do not establish production capacity or a platform speed advantage",
+    "Journal consistency is not external attestation or administrator-proof immutability",
+    "Recheck the merged UI release on the VM before recording the final demonstration"
+  ]
+}

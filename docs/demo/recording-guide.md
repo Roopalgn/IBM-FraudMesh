@@ -21,7 +21,7 @@ Browser recording is not exposed by the available browser-control tools. **No vi
 
 Use your existing screen recorder (for example Windows Snipping Tool screen recording) to capture a readable 16:9 browser area at 1920x1080 or 1440x810. Record 180 seconds following shotlist.md. Speak the voiceover or add narration afterward. Import captions.srt in a video editor if supported, and adjust timestamps to the actual takes. It is a draft script, not an automatic transcription.
 
-No recording library is added to the application. Hide credential files, the console, notifications and unrelated windows. Preserve the synthetic provenance, scope-transition note and unverified LinuxONE status. Do not imply that the local Windows recording is LinuxONE evidence.
+No recording library is added to the application. Hide credential files, the console, notifications and unrelated windows. Preserve synthetic provenance and scope-transition notes. Identify the recorded LinuxONE backend run as commit 3058fb8; recheck the updated UI on that VM. A local Windows recording does not establish its host. Confidential execution remains unverified.
 
 ## Review checklist
 

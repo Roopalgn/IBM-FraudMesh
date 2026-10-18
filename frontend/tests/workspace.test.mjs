@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SCENARIOS,scenarioTitle,sourceBadge,filterEvidence,journalLabel,graphPositions,riskDisplay,logo,icon} from '../src/workspace.js';
+import {SCENARIOS,scenarioTitle,sourceBadge,filterEvidence,journalLabel,graphPositions,riskDisplay,logo,icon,crossBankCaseCount} from '../src/workspace.js';
+import {readFile} from 'node:fs/promises';
+import {validateAnalysis,deriveView,maxStep} from '../src/model.js';
+
+test('authored cross-bank comparison stays zero until the last supporting replay event, including after reset',async()=>{
+ const data=validateAnalysis(JSON.parse(await readFile(new URL('../public/scenario.json',import.meta.url),'utf8')));
+ const last=maxStep(data);
+ assert.ok(last>1);
+ for(let step=0;step<last;step++)assert.equal(crossBankCaseCount(data,deriveView(data,step,true).alerts),0,`partial step ${step}`);
+ assert.equal(crossBankCaseCount(data,deriveView(data,last,true).alerts),1);
+ assert.equal(crossBankCaseCount(data,deriveView(data,0,true).alerts),0,'reset after completion');
+ assert.equal(crossBankCaseCount(data,deriveView(data,last,false,data.banks[0].id).alerts),0,'local scope');
+});
 
 test('all four live scenario titles remain distinct from saved and authored sources',()=>{
  assert.equal(Object.keys(SCENARIOS).length,4);

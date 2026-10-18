@@ -1,6 +1,18 @@
 # LinuxONE deployment and verification
 
-The integration has been tested locally. These steps must run on your actual LinuxONE allocation before claiming LinuxONE execution. They preserve the earlier ~/fraudmesh directory and its environment.
+User-supplied terminal output and screenshots record a successful LinuxONE s390x run of backend commit `3058fb8`: 71 passing Python tests, all four scenario checks, a loopback HTTP benchmark and a consistent 54-entry journal. The transcription is in `frontend/public/linuxone-run-evidence.json`; it is historical execution evidence, not attestation of future releases. These steps reproduce the checks and preserve the earlier ~/fraudmesh directory and environment.
+
+## Update the already-running UI
+
+Keep the server/tunnel window running. In a second PuTTY session, inspect the existing checkout:
+
+```bash
+cd ~/fraudmesh-integrated
+git status --short
+git branch --show-current
+```
+
+If it is clean and on main, run `git pull --ff-only`. Preserve any local changes before updating. This release changes static frontend assets and documentation; the existing backend serves those assets from disk. Hard-refresh the tunneled browser (Ctrl+Shift+R), check the ring/local/normal controls, reset the authored replay and confirm both cross-bank counts are zero until the last supporting event. No new package installation is needed for this UI update.
 
 ## First deployment in PuTTY
 

@@ -8,7 +8,7 @@ The strongest defensible claim is a measurable workflow for three simulated bank
 | What is original | Restricted cross-institution graph, candidate-specific evidence, bank-local ML, explicit local/combined comparison and ML-informed prioritization in one reproducible workflow | HMAC, logistic regression and graph rules are established methods; do not claim a world-first algorithm |
 | Is AI substantive | Original trained logistic model supplies real scores to the review-priority calculation; an ablation changes review decisions when scores change | Review weights are engineering choices, not a trained/calibrated second model; model's synthetic transaction F1 remains 0.5813 |
 | Is the engineering sound | Versioned scenario-reference API, strict signals, bounded graph workload, local/combined tests, hash-linked journal, fixtures separated from live API | One-process bank simulation, loopback service, no production participant authentication or external audit anchor |
-| Is LinuxONE used meaningfully | The CPU executes local ML, OpenSSL HMAC, cross-bank NetworkX computation, prioritization and journal writes; host-specific workload/HTTP benchmark records actual architecture | Actual s390x run is still mandatory. Hosting on LinuxONE alone proves no Secure Execution, hardware acceleration, availability, or superiority |
+| Is LinuxONE used meaningfully | User-supplied evidence records actual s390x execution of backend 3058fb8, 71 passing tests and scoped in-process/HTTP benchmarks including journal writes | Evidence is transcribed, not independently retrieved or remotely attested. Recheck the new UI release. Hosting alone proves no Secure Execution, hardware acceleration, availability, or superiority |
 
 ## Biggest gaps fixed in this revision
 
@@ -39,13 +39,13 @@ The original held-out transaction benchmark is separate: precision 0.497041, rec
 
 ## Honest IBM platform statement
 
-After verification, say: We executed inference, HMAC signal preparation, cross-bank graph computation, prioritization and audit persistence on the supplied LinuxONE s390x VM, with the attached commit-specific workload report. Before verification, say deployment target. No comparison here establishes that LinuxONE outperforms another machine.
+The recorded backend run supports: We executed inference, HMAC signal preparation, cross-bank graph computation, prioritization and audit persistence on the supplied LinuxONE s390x VM at commit 3058fb8. See frontend/public/linuxone-run-evidence.json for the transcription and source. The new UI release still needs a VM smoke check. No comparison here establishes that LinuxONE outperforms another machine.
 
 IBM documents Secure Execution as a specific technology requiring deployment configuration, not a property automatically established by having a VM: https://www.ibm.com/docs/en/linux-on-systems?topic=execution-introduction . IBM's Community Cloud introduction provides access and s390x context: https://community.ibm.com/zsystems/l1cc/ . These sources describe platform capability; they do not verify this allocation or workload.
 
 ## Remaining tasks before judging
 
-- Run the main branch verification on the real VM and retain its s390x report, exact commit and logs.
+- Retain the original s390x reports/logs for backend 3058fb8, update the VM to the merged UI release and smoke-test the interface through the tunnel.
 - Run the live loopback HTTP benchmark, confirm journal consistency, and rehearse through the SSH tunnel.
 - Ask the IBM mentor whether verified Secure Execution is available only if time permits; otherwise keep it out of implemented claims.
 - Prepare the pitch and backup recording with the before/after graph, real evidence and explicitly synthetic metrics.

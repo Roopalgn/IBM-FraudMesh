@@ -50,7 +50,7 @@ node --test frontend/tests/*.test.mjs
 
 For Node backend-contract tests, activate the virtual environment first, or set `FRAUDMESH_TEST_PYTHON` to its Python executable. The tests also recognize a repository-local `.venv` automatically. There is no frontend build step.
 
-The integration was verified locally on Windows Python 3.12 with 71 Python tests and 30 Node tests. The repository includes CI for Linux Python 3.12; CI must pass on the merged head; actual LinuxONE execution must be checked separately. Runtime evidence is written to ignored `output/runtime_report.json` and includes the platform where it was actually run.
+The finalized UI suite contains 41 Node tests alongside 71 Python tests. The repository includes CI for Linux Python 3.12. User-supplied terminal output and screenshots record a clean LinuxONE s390x run of backend commit `3058fb8`, with all 71 Python tests passing and in-process/HTTP benchmarks completed. The [transcribed run evidence](frontend/public/linuxone-run-evidence.json) names its source and measurement scope. Recheck each later release on the VM; a local UI preview does not attest its current host. Runtime reports remain in ignored `output/`.
 
 ## Interfaces and implementation
 
@@ -78,7 +78,7 @@ Optional configuration:
 - `FRAUDMESH_DEMO_SECRET`: synthetic-demo tokenization key. Never send it to the browser. The fallback is explicitly demo-only; changing it changes tokens.
 - `FRAUDMESH_ALLOWED_ORIGINS`: comma-separated frontend origins for a separately served dashboard. Default allows localhost/127.0.0.1 port 4173; the unified server needs no CORS setup.
 
-Runtime requirements pin the four directly used application packages. They match the package versions observed in the supplied LinuxONE installation screenshot, but actual execution remains to be verified on that server. No credentials or environments belong in Git.
+Runtime requirements pin the four directly used application packages. Those versions executed in the recorded LinuxONE run of `3058fb8`. No credentials or environments belong in Git.
 
 ## Judge evidence and remaining limits
 

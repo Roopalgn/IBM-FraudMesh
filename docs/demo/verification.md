@@ -1,5 +1,14 @@
 # Local frontend review - 18 October 2026
 
+Release review update: the replay comparison now counts only alerts supported by
+the current step; reset/partial steps and actual API local/cross-bank distinctions
+have regression coverage (41 frontend tests). LinuxONE wording/narration references
+the recorded backend 3058fb8 run rather than calling it only a target. Evidence is
+transcribed from user-supplied logs/screenshots in
+frontend/public/linuxone-run-evidence.json, not independently retrieved or attested.
+The revised UI still needs a VM smoke check. The notes below preserve the earlier
+component review, including its then-unverified platform statements and word counts.
+
 Base: integrated main at 3058fb8. Delivery branch: frontend_finalized. The user
 has authorized finalization and push; main is not merged by this task. Backend,
 API schemas, model, HMAC, graph rules and journal implementation are unchanged.

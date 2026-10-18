@@ -19,6 +19,7 @@ with Motion on; hide unrelated windows.
 | 02:40-02:50 | Export case. | Evidence/source-labelled JSON package. |
 | 02:50-03:00 | Return to ring graph and close. | Connected investigation, source labels intact. |
 
-Do not call the animation detector latency. If verified on LinuxONE, replace the
-local-execution narration only with evidence from that host and the same commit.
+Do not call the animation detector latency. Narration now references the recorded
+LinuxONE backend commit 3058fb8. Show its run evidence, recheck this new UI on the
+VM, and keep confidential execution and hardware acceleration unverified.
 Rehearse to 180 seconds; no video or audio has been recorded here.

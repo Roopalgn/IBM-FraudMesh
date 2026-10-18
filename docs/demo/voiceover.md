@@ -3,8 +3,8 @@
 Rehearse to shotlist.md, leaving space for the reveal and selections. This is a
 script, not recorded audio. All on-screen data is synthetic.
 
-Read the paragraphs below verbatim. There are 356 spoken words: about 2 minutes
-33 seconds at 140 words/minute, leaving roughly 15-25 seconds for pauses and
+Read the paragraphs below verbatim. There are 359 spoken words: about 2 minutes
+34 seconds at 140 words/minute, leaving roughly 15-25 seconds for pauses and
 on-screen actions. Aim for 2:45-3:00 after rehearsal. Timing depends on delivery.
 Screen clicks are listed separately in shotlist.md.
 
@@ -41,10 +41,10 @@ Collaboration needs a defined boundary. The simulated bank stages prepare only
 the permitted signal fields for the graph. Exact amounts and original references
 stay in the local stage; the graph receives bucketed values and pseudonymous
 relationships. Those tokens remain linkable, so pseudonymization is not anonymity.
-Our deployment target is IBM LinuxONE: the architecture places local inference,
-signal preparation and combined graph analysis in a reproducible Python workflow.
-This recording is local; target execution and confidential computing require
-separate verification. A configured server alone does not prove either claim.
+We ran local inference, signal preparation and combined graph analysis on IBM
+LinuxONE s390x. The recorded backend commit passed 71 tests. Its platform report
+and API benchmark provide execution evidence; confidential execution and hardware
+acceleration remain unverified. This revised interface still needs a VM smoke check.
 
 ## 02:25-03:00 | Complete the investigation
 The audit view checks the running service's hash-linked journal for consistency.

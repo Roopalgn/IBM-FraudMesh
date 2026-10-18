@@ -32,7 +32,7 @@ Only permitted fields enter the collaborative graph. Pseudonymous relationships 
 
 9
 00:02:05,000 --> 00:02:25,000
-IBM LinuxONE is the deployment target. This local recording does not verify target or confidential execution.
+A recorded LinuxONE s390x run passed 71 backend tests. Confidential execution and hardware acceleration remain unverified.
 
 10
 00:02:25,000 --> 00:02:40,000

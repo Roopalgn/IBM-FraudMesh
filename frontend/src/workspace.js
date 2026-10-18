@@ -6,6 +6,10 @@ export function scenarioTitle(choice) { return SCENARIOS[choice] || ({authored:'
 export function riskDisplay(triage) { return triage ? `${triage.priority_score.toFixed(3)} / 1.000` : 'Not supplied'; }
 export function filterEvidence(edges, query='', bank='all') { const q=query.trim().toLowerCase();return edges.filter(e=>(bank==='all'||e.contributing_bank_id===bank)&&[e.id,e.source,e.target,e.time_bucket,e.amount_bucket].join(' ').toLowerCase().includes(q)); }
 export function journalLabel(status) { return status==null?'Not checked':status.valid===true?'Local chain consistent':status.valid===false?'Integrity check failed':'Unavailable'; }
+export function crossBankCaseCount(data, alerts) {
+  const contributors = new Map(data.graph.edges.map(edge=>[edge.id,edge.contributing_bank_id]));
+  return alerts.filter(alert=>new Set(alert.edge_ids.map(id=>contributors.get(id)).filter(Boolean)).size>1).length;
+}
 export function graphPositions(nodes) {
   const sorted=[...nodes].sort((a,b)=>a.label.localeCompare(b.label));
   if(sorted.length<=8)return new Map(sorted.map((n,i)=>{const angle=-Math.PI/2+i*2*Math.PI/Math.max(1,sorted.length);return[n.id,[440+260*Math.cos(angle),220+140*Math.sin(angle)]];}));

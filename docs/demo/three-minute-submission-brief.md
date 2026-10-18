@@ -37,9 +37,11 @@ narrative through it, not a reason to add decorative effects across every screen
 
 - Record and time the complete 180-second sequence with legible screen captures
   and narration. No finished video or audio exists yet.
-- Verify actual FraudMesh execution on the configured LinuxONE server before
-  replacing the current local-Windows/unverified execution statements. Capture
-  platform, application run and reproducible commands; setup alone is insufficient.
+- Show the recorded LinuxONE s390x run of backend commit 3058fb8, including its
+  71 passing tests and scoped benchmarks. The evidence was supplied as terminal
+  output/screenshots; its transcription is in frontend/public/linuxone-run-evidence.json.
+  Update the VM to the merged UI release and smoke-test it before recording.
+  Confidential execution and hardware acceleration remain unverified.
 - Check the participant guidebook's exact submission and judging requirements
   against the final cut; this brief does not claim to reproduce the official rubric.
 - Review whether a first-time viewer can explain the problem, differentiator,
