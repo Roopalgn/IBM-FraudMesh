@@ -2,6 +2,31 @@
 
 The dependency-free HTML/CSS/JavaScript frontend includes Person 4's `feat/dashboard` at `15f6d89` and Person 1's live API integration. No install/build step is needed for runtime.
 
+## Final motion and recording preview
+
+The finalized frontend adds locally bundled IBM Plex Sans, luminous bank-colored
+evidence, fluid graph/case transitions, and the title **Follow the money. Reveal
+the network.** No frontend build or animation dependency is required. Font license
+and source notes are in `public/fonts/`.
+
+For the complete API-backed demo, start from the repository root:
+
+```sh
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8018
+```
+
+Open `http://127.0.0.1:8018/?scenario=ring&scope=local`, then select **Reveal the
+network**. Windows users with the project virtual environment can run
+`frontend/START-PREVIEW.cmd`. The motion toggle pauses transitions and ambient
+light; system reduced-motion preferences are honored. Ambient animation also
+pauses when hidden/offscreen. Optional `&profile=1` records one local reveal's
+frame intervals in the body `data-motion-profile` attribute for developer review;
+these measurements are unrelated to inference latency.
+
+The 180-second narration, shot list and caption draft are in `docs/demo/`.
+No completed film or narration audio is included. LinuxONE execution must still
+be verified on the actual target before making deployment claims.
+
 ## Run from a teammate's checkout
 
 Requires Node.js 18 or newer; no npm install or build is needed.
@@ -32,7 +57,7 @@ node --test tests/*.test.mjs
 node --check src/app.js
 ```
 
-26 tests passed: the original 10 plus response adaptation, memberships, corrected local structures, evidence references, provenance, privacy limits, exports, request safety, errors, timeouts and cancellation.
+39 tests pass, including existing model/adapter/API checks, presentation helpers, and frame-reporting validation.
 
 ## API integration
 
